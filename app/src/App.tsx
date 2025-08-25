@@ -20,65 +20,26 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [fhevmReady, setFhevmReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(false);
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        await initFHEVM();
-        setFhevmReady(true);
-      } catch (error) {
-        console.error('Failed to initialize FHEVM:', error);
-        setInitError(error instanceof Error ? error.message : 'Unknown error');
-      }
-    };
-
-    // Wait for fhevm to be available on window
-    if (typeof window !== 'undefined' && window.fhevm) {
-      initializeApp();
-    } else {
-      // Retry after a short delay
-      const timer = setTimeout(() => {
-        if (window.fhevm) {
-          initializeApp();
-        } else {
-          setInitError('FHEVM SDK not loaded. Please refresh the page.');
-        }
-      }, 2000);
-
-      return () => clearTimeout(timer);
+  const handleInitFHE = async () => {
+    if (isInitializing || fhevmReady) return;
+    
+    setIsInitializing(true);
+    setInitError(null);
+    
+    try {
+      await initFHEVM();
+      setFhevmReady(true);
+    } catch (error) {
+      console.error('Failed to initialize FHEVM:', error);
+      setInitError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsInitializing(false);
     }
-  }, []);
+  };
 
   const renderView = () => {
-    if (!fhevmReady) {
-      return (
-        <div className="tech-container">
-          <div className="tech-text">
-            {initError ? (
-              <div className="error-message">
-                <h3>Initialization Error</h3>
-                <p>{initError}</p>
-                <button 
-                  className="tech-button" 
-                  onClick={() => window.location.reload()}
-                  style={{ marginTop: '10px' }}
-                >
-                  Reload Page
-                </button>
-              </div>
-            ) : (
-              <>
-                <h3>Initializing FHE System...</h3>
-                <div className="loading" style={{ margin: '20px 0' }}>
-                  <p>Loading cryptographic modules...</p>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      );
-    }
-
     switch (currentView) {
       case 'create':
         return <CreateRound onBack={() => setCurrentView('dashboard')} />;
@@ -97,10 +58,78 @@ function App() {
         <RainbowKitProvider>
           <div className="App">
             <div className="tech-header">
-              <h1 className="tech-title">ShieldTrader</h1>
-              <p className="tech-text">FHE-Powered Lead Trading Protocol</p>
-              <div className="wallet-status">
-                <WalletConnection />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div>
+                  <h1 className="tech-title">ShieldTrader</h1>
+                  <p className="tech-text">FHE-Powered Lead Trading Protocol</p>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                  <div className="zama-status">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        borderRadius: '50%', 
+                        backgroundColor: fhevmReady ? '#00ff00' : initError ? '#ff0000' : '#888888',
+                        boxShadow: fhevmReady ? '0 0 6px #00ff00' : initError ? '0 0 6px #ff0000' : 'none'
+                      }}></div>
+                      <span className="tech-text" style={{ fontSize: '14px' }}>
+                        Zama FHE: {
+                          isInitializing ? 'Initializing...' :
+                          fhevmReady ? 'Ready' : 
+                          initError ? 'Error' : 
+                          'Not Initialized'
+                        }
+                      </span>
+                      {!fhevmReady && !isInitializing && (
+                        <button 
+                          className="tech-button" 
+                          onClick={handleInitFHE}
+                          style={{ 
+                            padding: '5px 10px', 
+                            fontSize: '12px',
+                            minWidth: 'auto'
+                          }}
+                        >
+                          Init FHE
+                        </button>
+                      )}
+                      {initError && (
+                        <button 
+                          className="tech-button" 
+                          onClick={() => {
+                            setInitError(null);
+                            handleInitFHE();
+                          }}
+                          style={{ 
+                            padding: '5px 10px', 
+                            fontSize: '12px',
+                            minWidth: 'auto',
+                            backgroundColor: '#ff4444'
+                          }}
+                        >
+                          Retry
+                        </button>
+                      )}
+                    </div>
+                    {initError && (
+                      <div style={{ 
+                        fontSize: '10px', 
+                        color: '#ff4444', 
+                        marginTop: '5px',
+                        maxWidth: '200px',
+                        wordWrap: 'break-word'
+                      }}>
+                        {initError}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="wallet-status">
+                    <WalletConnection />
+                  </div>
+                </div>
               </div>
             </div>
 
