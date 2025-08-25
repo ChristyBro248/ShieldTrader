@@ -14,8 +14,10 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         uint256 duration;
         uint256 startTime;
         uint256 endTime;
-        euint64 totalDeposited;
-        euint64 totalProfit;
+        euint64 totalDeposited; // Encrypted version
+        euint64 totalProfit; // Encrypted version
+        uint256 decryptedTotalDeposited; // Decrypted version
+        uint256 decryptedTotalProfit; // Decrypted version
         bool isActive;
         bool isProfitDistributed;
         bool depositsEnabled;
@@ -39,6 +41,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     mapping(uint256 => TradingRound) public tradingRounds;
     mapping(uint256 => mapping(address => Follower)) public followers;
     mapping(uint256 => address[]) public roundFollowers;
+    mapping(address => uint256[]) public leaderRounds; // Track all rounds by leader
 
     event RoundCreated(uint256 indexed roundId, address indexed leader, uint256 targetAmount, uint256 duration);
     event FollowerJoined(uint256 indexed roundId, address indexed follower, uint256 encryptedAmount);
@@ -66,12 +69,17 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
             endTime: block.timestamp + _duration,
             totalDeposited: FHE.asEuint64(0),
             totalProfit: FHE.asEuint64(0),
+            decryptedTotalDeposited: 0,
+            decryptedTotalProfit: 0,
             isActive: true,
             isProfitDistributed: false,
             depositsEnabled: true,
             followerCount: 0,
             unitProfitRate: 0
         });
+
+        // Add round to leader's list
+        leaderRounds[msg.sender].push(roundId);
 
         emit RoundCreated(roundId, msg.sender, _targetAmount, _duration);
     }
@@ -122,6 +130,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     function extractFunds(uint256 _roundId) external nonReentrant {
         TradingRound storage round = tradingRounds[_roundId];
         require(msg.sender == round.leader, "Only leader can extract");
+        require(!round.depositsEnabled, "Deposits not disabled");
         require(round.isActive, "Round not active");
 
         // Transfer all deposited cUSDT to leader for trading
@@ -188,6 +197,10 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         TradingRound storage round = tradingRounds[roundId];
         require(round.isActive, "Round not active");
         require(msg.sender == address(this), "Invalid callback");
+
+        // Store decrypted values
+        round.decryptedTotalDeposited = uint256(_decryptedTotalDeposited);
+        round.decryptedTotalProfit = uint256(_decryptedTotalProfit);
 
         // Calculate unit profit rate: (totalProfit * 1e18) / totalDeposited
         if (_decryptedTotalDeposited > 0) {
@@ -288,7 +301,9 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
             bool isProfitDistributed,
             bool depositsEnabled,
             uint256 followerCount,
-            uint256 unitProfitRate
+            uint256 unitProfitRate,
+            uint256 decryptedTotalDeposited,
+            uint256 decryptedTotalProfit
         )
     {
         TradingRound storage round = tradingRounds[_roundId];
@@ -302,7 +317,9 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
             round.isProfitDistributed,
             round.depositsEnabled,
             round.followerCount,
-            round.unitProfitRate
+            round.unitProfitRate,
+            round.decryptedTotalDeposited,
+            round.decryptedTotalProfit
         );
     }
 
@@ -324,5 +341,20 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
 
     function getTotalProfit(uint256 _roundId) external view returns (euint64) {
         return tradingRounds[_roundId].totalProfit;
+    }
+
+    function getLeaderRounds(address _leader) external view returns (uint256[] memory) {
+        return leaderRounds[_leader];
+    }
+
+    function getLeaderRoundsCount(address _leader) external view returns (uint256) {
+        return leaderRounds[_leader].length;
+    }
+
+    function getDecryptedAmounts(
+        uint256 _roundId
+    ) external view returns (uint256 decryptedTotalDeposited, uint256 decryptedTotalProfit) {
+        TradingRound storage round = tradingRounds[_roundId];
+        return (round.decryptedTotalDeposited, round.decryptedTotalProfit);
     }
 }
