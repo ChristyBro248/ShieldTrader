@@ -66,8 +66,12 @@ task("join-round", "Join a trading round")
   .addParam("roundid", "Round ID to join")
   .addParam("amount", "Amount to deposit in USDT (without decimals)")
   .addOptionalParam("contract", "LeadTrading contract address")
+  .addOptionalParam("account", "Account index to use (default: 0)")
   .setAction(async (taskArgs, hre) => {
-    const [signer] = await hre.ethers.getSigners();
+    const signers = await hre.ethers.getSigners();
+    const accountIndex = parseInt(taskArgs.account || "0");
+    const signer = signers[accountIndex];
+    await hre.fhevm.initializeCLIApi();
     
     const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
     const leadTrading = await hre.ethers.getContractAt("LeadTrading", contractAddress);
@@ -84,12 +88,7 @@ task("join-round", "Join a trading round")
     input.add64(amount);
     const encryptedInput = await input.encrypt();
     
-    // Set contract as operator for cUSDT transfers
-    const operatorTx = await cUSDT.connect(signer).setOperator(contractAddress, Math.floor(Date.now() / 1000) + 3600);
-    await operatorTx.wait();
-    console.log("Set LeadTrading as operator");
-    
-    // Join round
+    // Join round (the contract handles cUSDT transfers internally)
     const tx = await leadTrading
       .connect(signer)
       .joinRound(taskArgs.roundid, encryptedInput.handles[0], encryptedInput.inputProof);
@@ -126,26 +125,32 @@ task("round-info", "Get information about a trading round")
     console.log("Followers:", followers);
   });
 
-task("mint-cusdt", "Mint cUSDT tokens for testing")
+task("mint-cusdt", "Mint MockUSDT tokens for testing")
   .addParam("amount", "Amount to mint (without decimals)")
   .addOptionalParam("to", "Address to mint to (defaults to signer)")
-  .addOptionalParam("contract", "cUSDT contract address")
+  .addOptionalParam("contract", "MockUSDT contract address")
   .setAction(async (taskArgs, hre) => {
     const [signer] = await hre.ethers.getSigners();
     
-    const contractAddress = taskArgs.contract || (await hre.deployments.get("cUSDT")).address;
-    const cUSDT = await hre.ethers.getContractAt("cUSDT", contractAddress);
+    // Get MockUSDT contract (the underlying token)
+    const mockUSDTAddress = taskArgs.contract || (await hre.deployments.get("MockUSDT")).address;
+    const mockUSDT = await hre.ethers.getContractAt("MockUSDT", mockUSDTAddress);
     
     const to = taskArgs.to || signer.address;
     const amount = hre.ethers.parseUnits(taskArgs.amount, 6);
     
-    console.log(`Minting ${taskArgs.amount} cUSDT to ${to}`);
+    console.log(`Minting ${taskArgs.amount} MockUSDT to ${to}`);
     
-    const tx = await cUSDT.mint(to, amount);
-    await tx.wait();
+    // Mint MockUSDT
+    const mintTx = await mockUSDT.mint(to, amount);
+    await mintTx.wait();
     
-    console.log("cUSDT minted successfully!");
-    console.log("Transaction hash:", tx.hash);
+    // Check balance
+    const balance = await mockUSDT.balanceOf(to);
+    console.log("MockUSDT minted successfully!");
+    console.log("Transaction hash:", mintTx.hash);
+    console.log("Current MockUSDT balance:", hre.ethers.formatUnits(balance, 6));
+    console.log("\nNote: Use these MockUSDT tokens to interact with the cUSDT wrapper contract");
   });
 
 task("extract-funds", "Extract funds from a round (leader only, after stopping deposits)")
@@ -153,6 +158,7 @@ task("extract-funds", "Extract funds from a round (leader only, after stopping d
   .addOptionalParam("contract", "LeadTrading contract address")
   .setAction(async (taskArgs, hre) => {
     const [signer] = await hre.ethers.getSigners();
+    await hre.fhevm.initializeCLIApi();
     
     const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
     const leadTrading = await hre.ethers.getContractAt("LeadTrading", contractAddress);
@@ -173,7 +179,7 @@ task("deposit-profit", "Deposit profit to a round (leader only)")
   .addOptionalParam("contract", "LeadTrading contract address")
   .setAction(async (taskArgs, hre) => {
     const [signer] = await hre.ethers.getSigners();
-    
+    await hre.fhevm.initializeCLIApi()
     const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
     const leadTrading = await hre.ethers.getContractAt("LeadTrading", contractAddress);
     
@@ -189,12 +195,7 @@ task("deposit-profit", "Deposit profit to a round (leader only)")
     input.add64(amount);
     const encryptedInput = await input.encrypt();
     
-    // Set contract as operator for cUSDT transfers
-    const operatorTx = await cUSDT.connect(signer).setOperator(contractAddress, Math.floor(Date.now() / 1000) + 3600);
-    await operatorTx.wait();
-    console.log("Set LeadTrading as operator for cUSDT");
-    
-    // Deposit profit
+    // Deposit profit (contract handles cUSDT transfers internally)
     const tx = await leadTrading
       .connect(signer)
       .depositProfit(taskArgs.roundid, encryptedInput.handles[0], encryptedInput.inputProof);
