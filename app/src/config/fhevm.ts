@@ -1,10 +1,5 @@
-import { SepoliaConfig } from "@zama-fhe/relayer-sdk/bundle";
-
-declare global {
-  interface Window {
-    fhevm: any;
-  }
-}
+import { createInstance, initSDK, SepoliaConfig } from '@zama-fhe/relayer-sdk/bundle';
+import type { FhevmInstance } from '@zama-fhe/relayer-sdk/bundle';
 
 let fhevmInstance: any = null;
 
@@ -13,7 +8,7 @@ export const initFHEVM = async () => {
   
   try {
     // Initialize the FHE SDK
-    await window.fhevm.initSDK();
+    await initSDK();
     
     // Create FHE instance with Sepolia config
     const config = { 
@@ -21,7 +16,7 @@ export const initFHEVM = async () => {
       network: window.ethereum 
     };
     
-    fhevmInstance = await window.fhevm.createInstance(config);
+    fhevmInstance = await createInstance(config);
     return fhevmInstance;
   } catch (error) {
     console.error('Failed to initialize FHEVM:', error);
