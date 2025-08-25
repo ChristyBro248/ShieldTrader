@@ -3,7 +3,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { LEAD_TRADING_ABI, CONTRACTS } from '../config/contracts';
 
 interface DashboardProps {
-  onNavigate: (view: 'dashboard' | 'create' | 'join' | 'leader') => void;
+  onNavigate: (view: 'dashboard' | 'create' | 'join' | 'leader' | 'faucet') => void;
 }
 
 interface RoundInfo {

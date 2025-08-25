@@ -363,8 +363,119 @@ export const CUSDT_ABI = [
 
 // Contract addresses - these should match your deployed contracts
 export const CONTRACTS = {
-  LEAD_TRADING: '0x', // Will be set after deployment
-  CUSDT: '0x', // Will be set after deployment
+  LEAD_TRADING: '0xDB333BFC07B0138839F828aDf4A37695185Ce52b', // Will be set after deployment
+  CUSDT: '0x5d2075180c422806ecE6294c5146b17B50e1e2eB', // Will be set after deployment
+  FAUCET: '0x0000000000000000000000000000000000000000', // Will be set after deployment
+  MOCK_USDT: '0x0000000000000000000000000000000000000000', // Will be set after deployment
 } as const;
+
+// Faucet contract ABI
+export const FAUCET_ABI = [
+  {
+    "inputs": [],
+    "name": "claimTokens",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "canClaimTokens",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "canClaim",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "timeRemaining",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getFaucetBalance",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "name": "lastClaimTime",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "TokensClaimed",
+    "type": "event"
+  }
+] as const;
+
+// Mock USDT ABI for balance checking
+export const MOCK_USDT_ABI = [
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "account",
+        "type": "address"
+      }
+    ],
+    "name": "balanceOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+] as const;
 
 export const SEPOLIA_CHAIN_ID = 11155111;

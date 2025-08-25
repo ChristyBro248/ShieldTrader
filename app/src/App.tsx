@@ -10,11 +10,12 @@ import Dashboard from './components/Dashboard';
 import CreateRound from './components/CreateRound';
 import JoinRound from './components/JoinRound';
 import LeaderActions from './components/LeaderActions';
+import Faucet from './components/Faucet';
 import './index.css';
 
 const queryClient = new QueryClient();
 
-type View = 'dashboard' | 'create' | 'join' | 'leader';
+type View = 'dashboard' | 'create' | 'join' | 'leader' | 'faucet';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -47,6 +48,8 @@ function App() {
         return <JoinRound onBack={() => setCurrentView('dashboard')} />;
       case 'leader':
         return <LeaderActions onBack={() => setCurrentView('dashboard')} />;
+      case 'faucet':
+        return <Faucet onBack={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onNavigate={setCurrentView} />;
     }
@@ -162,6 +165,13 @@ function App() {
                   disabled={!fhevmReady}
                 >
                   Leader Actions
+                </button>
+                <button 
+                  className={`tech-button ${currentView === 'faucet' ? 'active' : ''}`}
+                  onClick={() => setCurrentView('faucet')}
+                  disabled={!fhevmReady}
+                >
+                  Faucet
                 </button>
               </div>
             </nav>
