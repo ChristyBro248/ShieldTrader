@@ -153,6 +153,39 @@ task("mint-cusdt", "Mint MockUSDT tokens for testing")
     console.log("\nNote: Use these MockUSDT tokens to interact with the cUSDT wrapper contract");
   });
 
+task("faucet-cusdt", "Claim 1000 cUSDT tokens from faucet")
+  .addOptionalParam("contract", "cUSDT contract address")
+  .addOptionalParam("account", "Account index to use (default: 0)")
+  .setAction(async (taskArgs, hre) => {
+    const signers = await hre.ethers.getSigners();
+    const accountIndex = parseInt(taskArgs.account || "0");
+    const signer = signers[accountIndex];
+    
+    const cUSDTAddress = taskArgs.contract || (await hre.deployments.get("cUSDT")).address;
+    const cUSDT = await hre.ethers.getContractAt("cUSDT", cUSDTAddress);
+    
+    console.log(`Claiming 1000 cUSDT tokens for account ${signer.address}`);
+    
+    try {
+      const tx = await cUSDT.connect(signer).faucet();
+      await tx.wait();
+      
+      console.log("Successfully claimed 1000 cUSDT tokens!");
+      console.log("Transaction hash:", tx.hash);
+      console.log("\nNote: These are encrypted cUSDT tokens that can be used directly in trading rounds");
+      
+    } catch (error: any) {
+      if (error.message?.includes("revert")) {
+        console.error("Failed to claim tokens. Possible reasons:");
+        console.error("- You may have already claimed recently (24 hour cooldown)");
+        console.error("- Contract may be out of funds");
+        console.error("- Network connection issues");
+      } else {
+        console.error("Error claiming cUSDT tokens:", error.message);
+      }
+    }
+  });
+
 task("extract-funds", "Extract funds from a round (leader only, after stopping deposits)")
   .addParam("roundid", "Round ID to extract from")
   .addOptionalParam("contract", "LeadTrading contract address")
