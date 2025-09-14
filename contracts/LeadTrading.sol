@@ -6,6 +6,7 @@ import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ConfidentialFungibleToken} from "@openzeppelin/confidential-contracts/token/ConfidentialFungibleToken.sol";
+import "hardhat/console.sol";
 
 contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     struct TradingRound {
@@ -81,6 +82,9 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         // Add round to leader's list
         leaderRounds[msg.sender].push(roundId);
 
+        FHE.allowThis(tradingRounds[roundId].totalDeposited);
+        FHE.allowThis(tradingRounds[roundId].totalProfit);
+
         emit RoundCreated(roundId, msg.sender, _targetAmount, _duration);
     }
 
@@ -95,25 +99,27 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         require(block.timestamp < round.endTime, "Round has ended");
         require(msg.sender != round.leader, "Leader cannot join as follower");
         require(!followers[_roundId][msg.sender].hasDeposited, "Already deposited");
-
+        console.log("joinRound 1");
         euint64 amount = FHE.fromExternal(_encryptedAmount, _inputProof);
-
+        console.log("joinRound 2");
         // Transfer encrypted USDT from user to contract
         // cUSDT.setOperator(operator, until);
         FHE.allowTransient(amount, address(cUSDT));
+        console.log("joinRound 3");
         cUSDT.confidentialTransferFrom(msg.sender, address(this), amount);
+        console.log("joinRound 4");
 
         followers[_roundId][msg.sender] = Follower({depositAmount: amount, hasDeposited: true, hasWithdrawn: false});
 
         roundFollowers[_roundId].push(msg.sender);
         round.followerCount++;
         round.totalDeposited = FHE.add(round.totalDeposited, amount);
-
+        console.log("joinRound 5");
         // Grant ACL permissions
         FHE.allowThis(round.totalDeposited);
         FHE.allowThis(followers[_roundId][msg.sender].depositAmount);
         FHE.allow(followers[_roundId][msg.sender].depositAmount, msg.sender);
-
+        console.log("joinRound 6");
         emit FollowerJoined(_roundId, msg.sender, 0); // We don't emit the actual amount for privacy
     }
 
