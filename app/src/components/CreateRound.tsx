@@ -53,7 +53,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
       // Convert target amount to wei (6 decimals for USDT)
       const targetAmountWei = parseUnits(targetAmount, 6);
       // Convert duration to seconds
-      const durationSeconds = BigInt(durationNum * 24 * 60 * 60);
+      const durationSeconds = BigInt(Math.floor(durationNum) * 24 * 60 * 60);
 
       writeContract({
         address: CONTRACTS.LEAD_TRADING as `0x${string}`,

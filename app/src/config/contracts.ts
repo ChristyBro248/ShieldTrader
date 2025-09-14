@@ -363,8 +363,8 @@ export const CUSDT_ABI = [
 
 // Contract addresses - these should match your deployed contracts
 export const CONTRACTS = {
-  LEAD_TRADING: '0xDB333BFC07B0138839F828aDf4A37695185Ce52b', // Will be set after deployment
-  CUSDT: '0x5d2075180c422806ecE6294c5146b17B50e1e2eB', // Will be set after deployment
+  LEAD_TRADING: '0xD3cA2e7408047454B4121B71E1bCa2727cea75C9', // Will be set after deployment
+  CUSDT: '0x8f41061d747F85a9A4d9D1eEE53a86acAE1C8Ff6', // Will be set after deployment
   FAUCET: '0x0000000000000000000000000000000000000000', // Will be set after deployment
   MOCK_USDT: '0x0000000000000000000000000000000000000000', // Will be set after deployment
 } as const;

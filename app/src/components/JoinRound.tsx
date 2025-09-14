@@ -6,11 +6,12 @@ import { getFHEVMInstance } from '../config/fhevm';
 
 interface JoinRoundProps {
   onBack: () => void;
+  prefilledRoundId?: number;
 }
 
-const JoinRound = ({ onBack }: JoinRoundProps) => {
+const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
   const { address } = useAccount();
-  const [roundId, setRoundId] = useState('');
+  const [roundId, setRoundId] = useState(prefilledRoundId ? prefilledRoundId.toString() : '');
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -196,11 +197,22 @@ const JoinRound = ({ onBack }: JoinRoundProps) => {
                 max={currentRoundId ? Number(currentRoundId) : undefined}
                 value={roundId}
                 onChange={(e) => setRoundId(e.target.value)}
+                disabled={!!prefilledRoundId || isLoading || isConfirming}
+                style={{
+                  ...(prefilledRoundId && {
+                    backgroundColor: 'rgba(0, 255, 102, 0.1)',
+                    border: '1px solid rgba(0, 255, 102, 0.3)',
+                    color: '#00ff66'
+                  })
+                }}
                 className="tech-input"
                 placeholder="e.g., 1"
-                disabled={isLoading || isConfirming}
               />
-              {currentRoundId ? (
+              {prefilledRoundId ? (
+                <p style={{ fontSize: '12px', color: '#00ff66', marginTop: '5px' }}>
+                  ✓ Round ID selected from Dashboard
+                </p>
+              ) : currentRoundId ? (
                 <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '5px' }}>
                   Latest round ID: {Number(currentRoundId)}
                 </p>

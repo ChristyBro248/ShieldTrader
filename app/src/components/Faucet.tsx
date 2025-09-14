@@ -1,19 +1,27 @@
-import { useState, useEffect } from 'react';
-import { useAccount, useWriteContract, useReadContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseUnits, formatUnits } from 'viem';
-import { FAUCET_ABI, MOCK_USDT_ABI, CONTRACTS } from '../config/contracts';
+import { useState } from 'react';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { CONTRACTS } from '../config/contracts';
 
 interface FaucetProps {
   onBack: () => void;
 }
 
 
+// Simple cUSDT faucet ABI - just the faucet function
+const CUSDT_FAUCET_ABI = [
+  {
+    "inputs": [],
+    "name": "faucet",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+] as const;
+
 const Faucet = ({ onBack }: FaucetProps) => {
   const { address } = useAccount();
-  const [claiming, setClaiming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   // Contract interactions
   const { writeContract, data: hash, isPending } = useWriteContract();
@@ -22,74 +30,11 @@ const Faucet = ({ onBack }: FaucetProps) => {
     hash,
   });
 
-  // Read contract data
-  const { data: canClaimData, refetch: refetchCanClaim } = useReadContract({
-    address: CONTRACTS.FAUCET as `0x${string}`,
-    abi: FAUCET_ABI,
-    functionName: 'canClaimTokens',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address }
-  });
-
-  const { data: faucetBalance, refetch: refetchFaucetBalance } = useReadContract({
-    address: CONTRACTS.FAUCET as `0x${string}`,
-    abi: FAUCET_ABI,
-    functionName: 'getFaucetBalance',
-  });
-
-  const { data: userBalance, refetch: refetchUserBalance } = useReadContract({
-    address: CONTRACTS.MOCK_USDT as `0x${string}`,
-    abi: MOCK_USDT_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address }
-  });
-
-  const { data: lastClaimTime } = useReadContract({
-    address: CONTRACTS.FAUCET as `0x${string}`,
-    abi: FAUCET_ABI,
-    functionName: 'lastClaimTime',
-    args: address ? [address] : undefined,
-    query: { enabled: !!address }
-  });
-
-  // Parse claim data
-  const canClaim = canClaimData?.[0] || false;
-  const timeRemainingFromContract = canClaimData?.[1] || 0n;
-
-  // Update countdown timer
-  useEffect(() => {
-    if (timeRemainingFromContract > 0n) {
-      setTimeRemaining(Number(timeRemainingFromContract));
-      
-      const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            refetchCanClaim();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      return () => clearInterval(timer);
-    }
-  }, [timeRemainingFromContract, refetchCanClaim]);
-
   // Handle transaction confirmation
-  useEffect(() => {
-    if (isConfirmed) {
-      setSuccess('Successfully claimed 1,000 cUSDT tokens!');
-      setClaiming(false);
-      setError(null);
-      
-      // Refetch all data
-      refetchCanClaim();
-      refetchFaucetBalance();
-      refetchUserBalance();
-    }
-  }, [isConfirmed, refetchCanClaim, refetchFaucetBalance, refetchUserBalance]);
+  if (isConfirmed && !success) {
+    setSuccess('Successfully claimed 1,000 cUSDT tokens!');
+    setError(null);
+  }
 
   const handleClaim = async () => {
     if (!address) {
@@ -97,39 +42,22 @@ const Faucet = ({ onBack }: FaucetProps) => {
       return;
     }
 
-    if (!canClaim) {
-      setError('Cannot claim tokens at this time');
-      return;
-    }
-
     setError(null);
     setSuccess(null);
-    setClaiming(true);
 
     try {
       await writeContract({
-        address: CONTRACTS.FAUCET as `0x${string}`,
-        abi: FAUCET_ABI,
-        functionName: 'claimTokens',
+        address: CONTRACTS.CUSDT as `0x${string}`,
+        abi: CUSDT_FAUCET_ABI,
+        functionName: 'faucet',
       });
     } catch (err: any) {
       console.error('Claim error:', err);
       setError(err?.message || 'Failed to claim tokens');
-      setClaiming(false);
     }
   };
 
-  const formatTime = (seconds: number) => {
-    if (seconds <= 0) return '00:00:00';
-    
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const isLoading = isPending || isConfirming || claiming;
+  const isLoading = isPending || isConfirming;
 
   return (
     <div className="tech-container">
@@ -141,56 +69,40 @@ const Faucet = ({ onBack }: FaucetProps) => {
       </div>
 
       <div className="tech-grid">
-        {/* Faucet Status Card */}
+        {/* Faucet Info Card */}
         <div className="tech-card">
-          <h3 className="tech-subtitle">Faucet Status</h3>
+          <h3 className="tech-subtitle">cUSDT Faucet</h3>
           <div className="tech-stats">
-            <div className="tech-stat-item">
-              <span className="tech-label">Faucet Balance:</span>
-              <span className="tech-value">
-                {faucetBalance ? formatUnits(faucetBalance, 6) : '0'} USDT
-              </span>
-            </div>
             <div className="tech-stat-item">
               <span className="tech-label">Claim Amount:</span>
               <span className="tech-value tech-highlight">1,000 cUSDT</span>
             </div>
             <div className="tech-stat-item">
-              <span className="tech-label">Cooldown Period:</span>
-              <span className="tech-value">24 Hours</span>
+              <span className="tech-label">Token Type:</span>
+              <span className="tech-value">Confidential USDT (FHE Encrypted)</span>
+            </div>
+            <div className="tech-stat-item">
+              <span className="tech-label">Usage:</span>
+              <span className="tech-value">Direct use in trading rounds</span>
             </div>
           </div>
         </div>
 
-        {/* User Status Card */}
+        {/* Status Card */}
         <div className="tech-card">
-          <h3 className="tech-subtitle">Your Status</h3>
+          <h3 className="tech-subtitle">Claim Status</h3>
           <div className="tech-stats">
             <div className="tech-stat-item">
-              <span className="tech-label">Your USDT Balance:</span>
-              <span className="tech-value">
-                {userBalance ? formatUnits(userBalance, 6) : '0'} USDT
+              <span className="tech-label">Wallet:</span>
+              <span className={`tech-value ${address ? 'tech-success' : 'tech-error'}`}>
+                {address ? 'Connected' : 'Not Connected'}
               </span>
             </div>
-            <div className="tech-stat-item">
-              <span className="tech-label">Can Claim:</span>
-              <span className={`tech-value ${canClaim ? 'tech-success' : 'tech-error'}`}>
-                {canClaim ? 'Yes' : 'No'}
-              </span>
-            </div>
-            {!canClaim && timeRemaining > 0 && (
+            {address && (
               <div className="tech-stat-item">
-                <span className="tech-label">Next Claim Available:</span>
-                <span className="tech-value tech-highlight">
-                  {formatTime(timeRemaining)}
-                </span>
-              </div>
-            )}
-            {lastClaimTime && lastClaimTime > 0n && (
-              <div className="tech-stat-item">
-                <span className="tech-label">Last Claim:</span>
-                <span className="tech-value">
-                  {new Date(Number(lastClaimTime) * 1000).toLocaleString()}
+                <span className="tech-label">Address:</span>
+                <span className="tech-value" style={{ fontSize: '12px', fontFamily: 'monospace' }}>
+                  {address.slice(0, 6)}...{address.slice(-4)}
                 </span>
               </div>
             )}
@@ -221,18 +133,14 @@ const Faucet = ({ onBack }: FaucetProps) => {
           <button 
             className="tech-button tech-button-primary"
             onClick={handleClaim}
-            disabled={!address || !canClaim || isLoading}
+            disabled={!address || isLoading}
             style={{ width: '100%', padding: '15px' }}
           >
             {isLoading 
               ? 'Processing...' 
               : !address 
                 ? 'Connect Wallet' 
-                : !canClaim 
-                  ? timeRemaining > 0 
-                    ? `Wait ${formatTime(timeRemaining)}`
-                    : 'Cannot Claim'
-                  : 'Claim 1,000 cUSDT'
+                : 'Claim 1,000 cUSDT'
             }
           </button>
         </div>
@@ -248,7 +156,6 @@ const Faucet = ({ onBack }: FaucetProps) => {
               <div className="tech-spinner"></div>
               {isPending && 'Waiting for wallet confirmation...'}
               {isConfirming && 'Confirming transaction...'}
-              {claiming && !isPending && !isConfirming && 'Processing claim...'}
             </div>
           </div>
         )}

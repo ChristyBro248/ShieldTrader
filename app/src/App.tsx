@@ -19,6 +19,7 @@ type View = 'dashboard' | 'create' | 'join' | 'leader' | 'faucet';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [selectedRoundId, setSelectedRoundId] = useState<number | undefined>();
   const [fhevmReady, setFhevmReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -40,18 +41,23 @@ function App() {
     }
   };
 
+  const handleNavigate = (view: View, roundId?: number) => {
+    setCurrentView(view);
+    setSelectedRoundId(roundId);
+  };
+
   const renderView = () => {
     switch (currentView) {
       case 'create':
         return <CreateRound onBack={() => setCurrentView('dashboard')} />;
       case 'join':
-        return <JoinRound onBack={() => setCurrentView('dashboard')} />;
+        return <JoinRound onBack={() => setCurrentView('dashboard')} prefilledRoundId={selectedRoundId} />;
       case 'leader':
         return <LeaderActions onBack={() => setCurrentView('dashboard')} />;
       case 'faucet':
         return <Faucet onBack={() => setCurrentView('dashboard')} />;
       default:
-        return <Dashboard onNavigate={setCurrentView} />;
+        return <Dashboard onNavigate={handleNavigate} />;
     }
   };
 
