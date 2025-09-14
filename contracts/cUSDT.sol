@@ -10,10 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {FHE, externalEuint64, euint64} from "@fhevm/solidity/lib/FHE.sol";
 
-contract cUSDT is ConfidentialFungibleTokenERC20Wrapper, SepoliaConfig {
-    constructor(
-        IERC20 usdt
-    ) ConfidentialFungibleTokenERC20Wrapper(usdt) ConfidentialFungibleToken("cUSDT", "cUSDT", "") {}
+contract cUSDT is ConfidentialFungibleToken, SepoliaConfig {
+    constructor() ConfidentialFungibleToken("cUSDT", "cUSDT", "") {}
 
     // _mint(address to, euint64 amount)
     function faucet() external {
