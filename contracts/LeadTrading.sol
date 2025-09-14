@@ -155,7 +155,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         TradingRound storage round = tradingRounds[_roundId];
         require(msg.sender == round.leader, "Only leader can deposit profit");
         require(round.isActive, "Round not active");
-        require(block.timestamp >= round.endTime, "Round not finished");
+        require(!round.depositsEnabled, "Deposits still enabled");
 
         euint64 profitAmount = FHE.fromExternal(_encryptedProfitAmount, _inputProof);
 
@@ -176,7 +176,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     function distributeProfit(uint256 _roundId) external {
         TradingRound storage round = tradingRounds[_roundId];
         require(round.isActive, "Round not active");
-        require(block.timestamp >= round.endTime, "Round not finished");
+        require(!round.depositsEnabled, "Deposits still enabled");
         require(!round.isProfitDistributed, "Profit already distributed");
         require(msg.sender == round.leader || msg.sender == owner(), "Unauthorized");
 

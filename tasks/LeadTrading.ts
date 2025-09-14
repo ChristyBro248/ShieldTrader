@@ -43,23 +43,14 @@ task("create-round", "Create a new trading round")
     console.log(`Creating trading round with target: ${taskArgs.target} USDT, duration: ${taskArgs.duration} days`);
     
     const tx = await leadTrading.connect(signer).createTradingRound(targetAmount, duration);
-    const receipt = await tx.wait();
-    
+    await tx.wait();
+
     console.log("Trading round created successfully!");
     console.log("Transaction hash:", tx.hash);
-    
-    // Get the round ID from events
-    const event = receipt?.logs.find((log: any) => 
-      log.topics[0] === hre.ethers.id("RoundCreated(uint256,address,uint256,uint256)")
-    );
-    
-    if (event) {
-      const roundId = hre.ethers.AbiCoder.defaultAbiCoder().decode(
-        ["uint256", "address", "uint256", "uint256"],
-        event.data
-      )[0];
-      console.log("Round ID:", roundId.toString());
-    }
+
+    // Safest: read from storage
+    const roundId = await leadTrading.currentRoundId();
+    console.log("Round ID:", roundId.toString());
   });
 
 task("join-round", "Join a trading round")
@@ -76,13 +67,18 @@ task("join-round", "Join a trading round")
     const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
     const leadTrading = await hre.ethers.getContractAt("LeadTrading", contractAddress);
     
-    const cUSDTAddress = (await hre.deployments.get("cUSDT")).address;
-    const cUSDT = await hre.ethers.getContractAt("cUSDT", cUSDTAddress);
+    // const cUSDTAddress = (await hre.deployments.get("cUSDT")).address;
+    // const cUSDT = await hre.ethers.getContractAt("cUSDT", cUSDTAddress);
 
     const amount = hre.ethers.parseUnits(taskArgs.amount, 6);
     
     console.log(`Joining round ${taskArgs.roundid} with ${taskArgs.amount} USDT`);
     
+    // Authorize contract as operator to spend encrypted funds (required by CFT)
+    // const until = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24h
+    // const opTx = await cUSDT.connect(signer).setOperator(contractAddress, until);
+    // await opTx.wait();
+
     // Create encrypted input
     const input = hre.fhevm.createEncryptedInput(contractAddress, signer.address);
     input.add64(amount);
@@ -125,32 +121,44 @@ task("round-info", "Get information about a trading round")
     console.log("Followers:", followers);
   });
 
-task("mint-cusdt", "Mint MockUSDT tokens for testing")
-  .addParam("amount", "Amount to mint (without decimals)")
-  .addOptionalParam("to", "Address to mint to (defaults to signer)")
-  .addOptionalParam("contract", "MockUSDT contract address")
+// Removed obsolete MockUSDT minter task; use cUSDT faucet instead.
+
+task("set-operator", "Authorize LeadTrading to spend caller's cUSDT for 24h")
+  .addOptionalParam("contract", "LeadTrading contract address")
+  .addOptionalParam("account", "Account index to use (default: 0)")
   .setAction(async (taskArgs, hre) => {
-    const [signer] = await hre.ethers.getSigners();
-    
-    // Get MockUSDT contract (the underlying token)
-    const mockUSDTAddress = taskArgs.contract || (await hre.deployments.get("MockUSDT")).address;
-    const mockUSDT = await hre.ethers.getContractAt("MockUSDT", mockUSDTAddress);
-    
-    const to = taskArgs.to || signer.address;
-    const amount = hre.ethers.parseUnits(taskArgs.amount, 6);
-    
-    console.log(`Minting ${taskArgs.amount} MockUSDT to ${to}`);
-    
-    // Mint MockUSDT
-    const mintTx = await mockUSDT.mint(to, amount);
-    await mintTx.wait();
-    
-    // Check balance
-    const balance = await mockUSDT.balanceOf(to);
-    console.log("MockUSDT minted successfully!");
-    console.log("Transaction hash:", mintTx.hash);
-    console.log("Current MockUSDT balance:", hre.ethers.formatUnits(balance, 6));
-    console.log("\nNote: Use these MockUSDT tokens to interact with the cUSDT wrapper contract");
+    const signers = await hre.ethers.getSigners();
+    const accountIndex = parseInt(taskArgs.account || "0");
+    const signer = signers[accountIndex];
+
+    const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
+    const cUSDTAddress = (await hre.deployments.get("cUSDT")).address;
+    const cUSDT = await hre.ethers.getContractAt("cUSDT", cUSDTAddress);
+
+    const until = Math.floor(Date.now() / 1000) + 24 * 60 * 60;
+    console.log(`Setting operator: ${contractAddress} until ${until} for ${signer.address}`);
+    const tx = await cUSDT.connect(signer).setOperator(contractAddress, until);
+    await tx.wait();
+    console.log("Operator set. Tx:", tx.hash);
+  });
+
+task("cft-status", "Show cUSDT operator and balance for an account")
+  .addOptionalParam("account", "Account index to inspect (default: 1)")
+  .addOptionalParam("contract", "LeadTrading contract address")
+  .setAction(async (taskArgs, hre) => {
+    const signers = await hre.ethers.getSigners();
+    const i = parseInt(taskArgs.account || "1");
+    const user = signers[i];
+    const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
+    const cUSDTAddress = (await hre.deployments.get("cUSDT")).address;
+    const cUSDT = await hre.ethers.getContractAt("cUSDT", cUSDTAddress);
+
+    const isOp = await cUSDT.isOperator(user.address, contractAddress);
+    const bal = await cUSDT.confidentialBalanceOf(user.address);
+    console.log("Account:", user.address);
+    console.log("LeadTrading:", contractAddress);
+    console.log("Operator set:", isOp);
+    console.log("cUSDT balance:", hre.ethers.formatUnits(bal, 6));
   });
 
 task("faucet-cusdt", "Claim 1000 cUSDT tokens from faucet")
@@ -278,8 +286,11 @@ task("stop-deposits", "Stop accepting new deposits for a round (leader only)")
 task("withdraw-profit", "Withdraw profit from a round (follower)")
   .addParam("roundid", "Round ID to withdraw from")
   .addOptionalParam("contract", "LeadTrading contract address")
+  .addOptionalParam("account", "Account index to use (default: 0)")
   .setAction(async (taskArgs, hre) => {
-    const [signer] = await hre.ethers.getSigners();
+    const signers = await hre.ethers.getSigners();
+    const accountIndex = taskArgs.account ? parseInt(taskArgs.account) : 0;
+    const signer = signers[accountIndex];
     
     const contractAddress = taskArgs.contract || (await hre.deployments.get("LeadTrading")).address;
     const leadTrading = await hre.ethers.getContractAt("LeadTrading", contractAddress);
