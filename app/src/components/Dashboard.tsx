@@ -68,7 +68,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     roundsData.forEach((result, index) => {
       if (result.status === 'success' && result.result) {
         const roundId = startRound + index;
-        const data = result.result as any[];
+        const data = result.result as unknown as any[];
         
         const info: RoundInfo = {
           leader: data[0],
