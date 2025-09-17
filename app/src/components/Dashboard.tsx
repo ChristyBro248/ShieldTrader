@@ -133,26 +133,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         ) : (
           <>
             <div style={{ marginBottom: '30px', textAlign: 'center' }}>
-              <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button 
-                  className="tech-button"
-                  onClick={() => onNavigate('create')}
-                >
-                  Create New Round
-                </button>
-                <button 
-                  className="tech-button"
-                  onClick={() => onNavigate('join')}
-                >
-                  Join Round
-                </button>
-                <button 
-                  className="tech-button"
-                  onClick={() => onNavigate('leader')}
-                >
-                  Manage Rounds
-                </button>
-              </div>
+            
             </div>
 
             {roundsLoading ? (
