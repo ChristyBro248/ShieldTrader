@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { LEAD_TRADING_ABI, CONTRACTS, CUSDT_ABI } from '../config/contracts';
 import { parseUnits } from 'viem';
@@ -18,47 +18,69 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
   const [step, setStep] = useState<'approve' | 'join'>('approve');
   const [operatorApproved, setOperatorApproved] = useState(false);
 
-  const { writeContract, data: hash } = useWriteContract({
-    onSuccess: (hash) => {
-      console.log('=== JoinRound: Transaction submitted ===');
-      console.log('JoinRound: Transaction hash:', hash);
-      console.log('JoinRound: Waiting for confirmation...');
-    },
-    onError: (error) => {
-      console.error('=== JoinRound: Transaction submission failed ===');
-      console.error('JoinRound: Submission error:', error);
-      setIsLoading(false);
-      setError(error.message || 'Failed to submit transaction');
-    }
+  const { writeContract, data: hash, error: writeError } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess, data: receipt } = useWaitForTransactionReceipt({
+    hash,
   });
 
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-    onSuccess: (receipt) => {
+  // Handle transaction success
+  useEffect(() => {
+    if (isSuccess && receipt && hash) {
       console.log('=== JoinRound: Transaction confirmed ===');
       console.log('JoinRound: Transaction hash:', hash);
       console.log('JoinRound: Receipt:', receipt);
       console.log('JoinRound: Block number:', receipt.blockNumber);
       console.log('JoinRound: Gas used:', receipt.gasUsed.toString());
+      console.log('JoinRound: Current step when transaction confirmed:', step);
 
       if (step === 'approve') {
-        console.log('JoinRound: Operator approval confirmed, proceeding to join');
+        console.log('JoinRound: Operator approval confirmed, proceeding to join step');
         setOperatorApproved(true);
         setStep('join');
         setIsLoading(false);
-      } else {
+        setError(null);
+      } else if (step === 'join') {
         console.log('JoinRound: Join round confirmed');
         setIsLoading(false);
+        // Keep the success state - user will see success page
       }
-    },
-    onError: (error) => {
-      console.error('=== JoinRound: Transaction failed ===');
-      console.error('JoinRound: Transaction error:', error);
-      console.error('JoinRound: Hash:', hash);
-      setIsLoading(false);
-      setError('Transaction failed');
     }
-  });
+  }, [isSuccess, receipt, hash, step]);
+
+  // Handle write contract success
+  useEffect(() => {
+    if (hash) {
+      console.log('=== JoinRound: Transaction submitted ===');
+      console.log('JoinRound: Transaction hash:', hash);
+      console.log('JoinRound: Waiting for confirmation...');
+    }
+  }, [hash]);
+
+  // Handle write contract errors
+  useEffect(() => {
+    if (writeError) {
+      console.error('=== JoinRound: Transaction submission failed ===');
+      console.error('JoinRound: Submission error:', writeError);
+      setIsLoading(false);
+      setError(writeError.message || 'Failed to submit transaction');
+    }
+  }, [writeError]);
+
+  // Handle transaction timeout
+  useEffect(() => {
+    if (hash && !isConfirming && !isSuccess && !receipt) {
+      // Transaction might have failed - but let's wait a bit more
+      const timeout = setTimeout(() => {
+        console.error('=== JoinRound: Transaction seems to have failed ===');
+        console.error('JoinRound: Hash:', hash);
+        setIsLoading(false);
+        setError('Transaction may have failed - please check your wallet');
+      }, 30000); // Wait 30 seconds before assuming failure
+
+      return () => clearTimeout(timeout);
+    }
+  }, [hash, isConfirming, isSuccess, receipt]);
 
   const { data: currentRoundId } = useReadContract({
     address: CONTRACTS.LEAD_TRADING as `0x${string}`,
@@ -73,6 +95,14 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
     args: roundId ? [BigInt(roundId)] : undefined,
   });
 
+  // Check if user has already set operator for the contract
+  const { data: isOperatorSet } = useReadContract({
+    address: CONTRACTS.CUSDT as `0x${string}`,
+    abi: CUSDT_ABI,
+    functionName: 'isOperator',
+    args: address && CONTRACTS.LEAD_TRADING ? [address, CONTRACTS.LEAD_TRADING as `0x${string}`] : undefined,
+  });
+
   // Log contract data when loaded
   if (currentRoundId) {
     console.log('JoinRound: Current round ID:', currentRoundId.toString());
@@ -81,6 +111,30 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
   if (roundInfo && roundId) {
     console.log('JoinRound: Round info for round', roundId, ':', roundInfo);
   }
+
+  // Check if operator is already set and still valid
+  useEffect(() => {
+    if (address) {
+      const operatorValid = Boolean(isOperatorSet);
+
+      console.log('JoinRound: IsOperator result:', isOperatorSet);
+      console.log('JoinRound: Operator valid:', operatorValid);
+
+      if (operatorValid) {
+        console.log('JoinRound: Operator already set and valid, skipping to join step');
+        setOperatorApproved(true);
+        setStep('join');
+      } else {
+        console.log('JoinRound: Operator not set, staying on approve step');
+        setOperatorApproved(false);
+        setStep('approve');
+      }
+    }
+  }, [isOperatorSet, address]);
+
+  // Debug state changes
+  console.log('JoinRound: Current state - step:', step, 'operatorApproved:', operatorApproved, 'isLoading:', isLoading, 'isConfirming:', isConfirming);
+  console.log('JoinRound: IsOperator value:', isOperatorSet);
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
