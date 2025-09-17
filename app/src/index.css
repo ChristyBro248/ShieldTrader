@@ -160,6 +160,11 @@ body {
   text-shadow: 0 0 8px rgba(0, 153, 255, 0.6);
 }
 
+.status-warning {
+  color: #ffa500;
+  text-shadow: 0 0 8px rgba(255, 165, 0, 0.6);
+}
+
 .loading {
   position: relative;
 }

@@ -19,6 +19,7 @@ interface RoundInfo {
   unitProfitRate: bigint;
   decryptedTotalDeposited: bigint;
   decryptedTotalProfit: bigint;
+  fundsExtracted?: boolean;
 }
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
@@ -31,17 +32,25 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     functionName: 'currentRoundId',
   });
 
-  // Generate contracts array for batch reading
+  // Generate contracts array for batch reading - both round info and funds extracted status
   const contracts = currentRoundId ? (() => {
     const roundsToFetch = Math.min(Number(currentRoundId), 10);
     const startRound = Math.max(1, Number(currentRoundId) - roundsToFetch + 1);
     const contractCalls = [];
-    
+
     for (let i = startRound; i <= Number(currentRoundId); i++) {
+      // Add round info call
       contractCalls.push({
         address: CONTRACTS.LEAD_TRADING as `0x${string}`,
         abi: LEAD_TRADING_ABI,
         functionName: 'getRoundInfo',
+        args: [BigInt(i)],
+      });
+      // Add funds extracted status call
+      contractCalls.push({
+        address: CONTRACTS.LEAD_TRADING as `0x${string}`,
+        abi: LEAD_TRADING_ABI,
+        functionName: 'isFundsExtracted',
         args: [BigInt(i)],
       });
     }
@@ -65,11 +74,18 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const roundsToFetch = Math.min(Number(currentRoundId), 10);
     const startRound = Math.max(1, Number(currentRoundId) - roundsToFetch + 1);
 
-    roundsData.forEach((result, index) => {
-      if (result.status === 'success' && result.result) {
-        const roundId = startRound + index;
-        const data = result.result as unknown as any[];
-        
+    // Process pairs of results (round info + funds extracted status)
+    for (let i = 0; i < roundsData.length; i += 2) {
+      const roundInfoResult = roundsData[i];
+      const fundsExtractedResult = roundsData[i + 1];
+
+      if (roundInfoResult?.status === 'success' && roundInfoResult.result &&
+          fundsExtractedResult?.status === 'success') {
+        const roundIndex = Math.floor(i / 2);
+        const roundId = startRound + roundIndex;
+        const data = roundInfoResult.result as unknown as any[];
+        const fundsExtracted = Boolean(fundsExtractedResult.result);
+
         const info: RoundInfo = {
           leader: data[0],
           targetAmount: data[1],
@@ -83,11 +99,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           unitProfitRate: data[9],
           decryptedTotalDeposited: data[10],
           decryptedTotalProfit: data[11],
+          fundsExtracted: fundsExtracted,
         };
-        
+
         roundData.push({ id: roundId, info });
       }
-    });
+    }
 
     setRounds(roundData.reverse()); // Show newest first
   }, [roundsData, currentRoundId]);
@@ -112,10 +129,31 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   };
 
   const getRoundStatus = (info: RoundInfo) => {
-    if (info.isProfitDistributed) return { text: 'Completed', class: 'status-completed' };
-    if (!info.isActive) return { text: 'Inactive', class: 'status-inactive' };
-    if (!info.depositsEnabled) return { text: 'Trading', class: 'status-active' };
-    return { text: 'Open for Deposits', class: 'status-active' };
+    const now = Math.floor(Date.now() / 1000);
+    const hasEnded = now >= Number(info.endTime);
+
+    // Debug info - remove this later
+    console.log('Round status debug:', {
+      isProfitDistributed: info.isProfitDistributed,
+      isActive: info.isActive,
+      depositsEnabled: info.depositsEnabled,
+      fundsExtracted: info.fundsExtracted,
+      hasEnded,
+      endTime: Number(info.endTime),
+      now
+    });
+
+    if (info.isProfitDistributed) return { text: 'Completed ✅', class: 'status-completed' };
+    if (!info.isActive) return { text: 'Inactive ❌', class: 'status-inactive' };
+
+    // If funds were extracted and time is close to ending or ended, leader should deposit profit
+    if (info.fundsExtracted && (hasEnded || (Number(info.endTime) - now) < 7 * 24 * 3600)) {
+      return { text: '🔸 Ready for Profit Deposit', class: 'status-warning' };
+    }
+
+    if (info.fundsExtracted) return { text: '🔄 Trading in Progress', class: 'status-active' };
+    if (!info.depositsEnabled) return { text: '🔄 Preparing for Trading', class: 'status-active' };
+    return { text: '📥 Open for Deposits', class: 'status-active' };
   };
 
   return (
@@ -239,6 +277,44 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           <p style={{ fontSize: '12px', color: '#00ff66' }}>
                             ⚡ You are the leader of this round
                           </p>
+                          {(() => {
+                            const now = Math.floor(Date.now() / 1000);
+                            const hasEnded = now >= Number(info.endTime);
+                            const timeRemaining = Number(info.endTime) - now;
+                            const daysRemaining = Math.floor(timeRemaining / (24 * 3600));
+
+                            if (info.isProfitDistributed) {
+                              return (
+                                <p style={{ fontSize: '11px', color: '#888', marginTop: '5px' }}>
+                                  Round completed - profits distributed
+                                </p>
+                              );
+                            } else if (info.fundsExtracted && (hasEnded || daysRemaining <= 7)) {
+                              return (
+                                <p style={{ fontSize: '11px', color: '#ffa500', marginTop: '5px' }}>
+                                  🚨 Time to deposit profit and distribute to followers!
+                                </p>
+                              );
+                            } else if (info.fundsExtracted) {
+                              return (
+                                <p style={{ fontSize: '11px', color: '#00ff66', marginTop: '5px' }}>
+                                  💰 Funds extracted - Trading in progress ({daysRemaining}d remaining)
+                                </p>
+                              );
+                            } else if (!info.depositsEnabled) {
+                              return (
+                                <p style={{ fontSize: '11px', color: '#ffa500', marginTop: '5px' }}>
+                                  ⚡ Ready to extract funds for trading
+                                </p>
+                              );
+                            } else {
+                              return (
+                                <p style={{ fontSize: '11px', color: '#888', marginTop: '5px' }}>
+                                  Collecting deposits from followers
+                                </p>
+                              );
+                            }
+                          })()}
                         </div>
                       ) : canJoin ? (
                         <div style={{ marginTop: '15px', padding: '10px', background: 'rgba(0, 255, 102, 0.1)', borderRadius: '4px', textAlign: 'center' }}>

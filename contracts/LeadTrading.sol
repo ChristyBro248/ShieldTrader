@@ -43,6 +43,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     mapping(uint256 => mapping(address => Follower)) public followers;
     mapping(uint256 => address[]) public roundFollowers;
     mapping(address => uint256[]) public leaderRounds; // Track all rounds by leader
+    mapping(uint256 => bool) public fundsExtracted; // Track if funds were extracted for each round
 
     event RoundCreated(uint256 indexed roundId, address indexed leader, uint256 targetAmount, uint256 duration);
     event FollowerJoined(uint256 indexed roundId, address indexed follower, uint256 encryptedAmount);
@@ -78,6 +79,8 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
             followerCount: 0,
             unitProfitRate: 0
         });
+
+        fundsExtracted[roundId] = false;
 
         // Add round to leader's list
         leaderRounds[msg.sender].push(roundId);
@@ -135,10 +138,14 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         require(msg.sender == round.leader, "Only leader can extract");
         require(!round.depositsEnabled, "Deposits not disabled");
         require(round.isActive, "Round not active");
+        require(!fundsExtracted[_roundId], "Funds already extracted");
 
         // Transfer all deposited cUSDT to leader for trading
         FHE.allowTransient(round.totalDeposited, address(cUSDT));
         cUSDT.confidentialTransfer(round.leader, round.totalDeposited);
+
+        // Mark funds as extracted
+        fundsExtracted[_roundId] = true;
 
         // Grant ACL permissions
         FHE.allow(round.totalDeposited, round.leader);
@@ -289,26 +296,20 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     }
 
     // View functions
-    function getRoundInfo(
-        uint256 _roundId
-    )
-        external
-        view
-        returns (
-            address leader,
-            uint256 targetAmount,
-            uint256 duration,
-            uint256 startTime,
-            uint256 endTime,
-            bool isActive,
-            bool isProfitDistributed,
-            bool depositsEnabled,
-            uint256 followerCount,
-            uint256 unitProfitRate,
-            uint256 decryptedTotalDeposited,
-            uint256 decryptedTotalProfit
-        )
-    {
+    function getRoundInfo(uint256 _roundId) external view returns (
+        address leader,
+        uint256 targetAmount,
+        uint256 duration,
+        uint256 startTime,
+        uint256 endTime,
+        bool isActive,
+        bool isProfitDistributed,
+        bool depositsEnabled,
+        uint256 followerCount,
+        uint256 unitProfitRate,
+        uint256 decryptedTotalDeposited,
+        uint256 decryptedTotalProfit
+    ) {
         TradingRound storage round = tradingRounds[_roundId];
         return (
             round.leader,
@@ -324,6 +325,10 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
             round.decryptedTotalDeposited,
             round.decryptedTotalProfit
         );
+    }
+
+    function isFundsExtracted(uint256 _roundId) external view returns (bool) {
+        return fundsExtracted[_roundId];
     }
 
     function getFollowerInfo(

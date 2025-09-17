@@ -206,6 +206,25 @@ export const LEAD_TRADING_ABI = [
         "internalType": "uint256",
         "name": "_roundId",
         "type": "uint256"
+      }
+    ],
+    "name": "isFundsExtracted",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_roundId",
+        "type": "uint256"
       },
       {
         "internalType": "address",
@@ -417,6 +436,48 @@ export const CUSDT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "holder",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "spender",
+        "type": "address"
+      }
+    ],
+    "name": "isOperator",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint48",
+        "name": "until",
+        "type": "uint48"
+      }
+    ],
+    "name": "setOperator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "faucet",
     "outputs": [],
@@ -427,7 +488,7 @@ export const CUSDT_ABI = [
 
 // Contract addresses - these should match your deployed contracts
 export const CONTRACTS = {
-  LEAD_TRADING: '0x77E36443d36F72eeE0dA064aDbEe3795444730f4', // Will be set after deployment
+  LEAD_TRADING: '0x7153a34292b60C62E52F5CF627B2C07AA0E85AdF', // Updated contract with fundsExtracted tracking
   CUSDT: '0x8f41061d747F85a9A4d9D1eEE53a86acAE1C8Ff6', // Will be set after deployment
   FAUCET: '0x0000000000000000000000000000000000000000', // Will be set after deployment
   MOCK_USDT: '0x0000000000000000000000000000000000000000', // Will be set after deployment
