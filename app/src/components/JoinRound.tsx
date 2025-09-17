@@ -15,11 +15,49 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState<'approve' | 'join'>('approve');
+  const [operatorApproved, setOperatorApproved] = useState(false);
 
-  const { writeContract, data: hash } = useWriteContract();
+  const { writeContract, data: hash } = useWriteContract({
+    onSuccess: (hash) => {
+      console.log('=== JoinRound: Transaction submitted ===');
+      console.log('JoinRound: Transaction hash:', hash);
+      console.log('JoinRound: Waiting for confirmation...');
+    },
+    onError: (error) => {
+      console.error('=== JoinRound: Transaction submission failed ===');
+      console.error('JoinRound: Submission error:', error);
+      setIsLoading(false);
+      setError(error.message || 'Failed to submit transaction');
+    }
+  });
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
+    onSuccess: (receipt) => {
+      console.log('=== JoinRound: Transaction confirmed ===');
+      console.log('JoinRound: Transaction hash:', hash);
+      console.log('JoinRound: Receipt:', receipt);
+      console.log('JoinRound: Block number:', receipt.blockNumber);
+      console.log('JoinRound: Gas used:', receipt.gasUsed.toString());
+
+      if (step === 'approve') {
+        console.log('JoinRound: Operator approval confirmed, proceeding to join');
+        setOperatorApproved(true);
+        setStep('join');
+        setIsLoading(false);
+      } else {
+        console.log('JoinRound: Join round confirmed');
+        setIsLoading(false);
+      }
+    },
+    onError: (error) => {
+      console.error('=== JoinRound: Transaction failed ===');
+      console.error('JoinRound: Transaction error:', error);
+      console.error('JoinRound: Hash:', hash);
+      setIsLoading(false);
+      setError('Transaction failed');
+    }
   });
 
   const { data: currentRoundId } = useReadContract({
@@ -35,53 +73,133 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
     args: roundId ? [BigInt(roundId)] : undefined,
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Log contract data when loaded
+  if (currentRoundId) {
+    console.log('JoinRound: Current round ID:', currentRoundId.toString());
+  }
+
+  if (roundInfo && roundId) {
+    console.log('JoinRound: Round info for round', roundId, ':', roundInfo);
+  }
+
+  const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    console.log('=== JoinRound: Starting approval process ===');
+
     if (!address) {
+      console.log('JoinRound: No wallet address found');
       setError('Please connect your wallet');
-      return;
-    }
-
-    if (!roundId || !amount) {
-      setError('Please fill in all fields');
-      return;
-    }
-
-    const amountNum = parseFloat(amount);
-    const roundIdNum = parseInt(roundId);
-
-    if (amountNum <= 0) {
-      setError('Amount must be greater than 0');
-      return;
-    }
-
-    if (roundIdNum <= 0 || (currentRoundId && roundIdNum > Number(currentRoundId))) {
-      setError('Invalid round ID');
       return;
     }
 
     try {
       setError(null);
       setIsLoading(true);
+      console.log('JoinRound: Starting operator approval');
+
+      const until = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
+      console.log('JoinRound: Setting operator until:', until);
+
+      writeContract({
+        address: CONTRACTS.CUSDT as `0x${string}`,
+        abi: [
+          {
+            "inputs": [
+              { "internalType": "address", "name": "operator", "type": "address" },
+              { "internalType": "uint256", "name": "until", "type": "uint256" }
+            ],
+            "name": "setOperator",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function"
+          }
+        ],
+        functionName: 'setOperator',
+        args: [CONTRACTS.LEAD_TRADING as `0x${string}`, BigInt(until)]
+      });
+
+      console.log('JoinRound: Operator approval initiated');
+
+    } catch (err) {
+      console.error('=== JoinRound: Approval error ===');
+      console.error('JoinRound: Error details:', err);
+      setError(err instanceof Error ? err.message : 'Failed to approve operator');
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinRound = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('=== JoinRound: Starting join round process ===');
+
+    if (!address) {
+      console.log('JoinRound: No wallet address found');
+      setError('Please connect your wallet');
+      return;
+    }
+
+    if (!roundId || !amount) {
+      console.log('JoinRound: Missing required fields - roundId:', roundId, 'amount:', amount);
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const amountNum = parseFloat(amount);
+    const roundIdNum = parseInt(roundId);
+    console.log('JoinRound: Parsed values - amountNum:', amountNum, 'roundIdNum:', roundIdNum);
+
+    if (amountNum <= 0) {
+      console.log('JoinRound: Invalid amount - must be greater than 0');
+      setError('Amount must be greater than 0');
+      return;
+    }
+
+    if (roundIdNum <= 0 || (currentRoundId && roundIdNum > Number(currentRoundId))) {
+      console.log('JoinRound: Invalid round ID - roundIdNum:', roundIdNum, 'currentRoundId:', currentRoundId);
+      setError('Invalid round ID');
+      return;
+    }
+
+    console.log('JoinRound: All validation checks passed');
+
+    try {
+      setError(null);
+      setIsLoading(true);
+      console.log('JoinRound: Starting transaction process');
 
       // Get FHEVM instance
+      console.log('JoinRound: Getting FHEVM instance');
       const fhevmInstance = getFHEVMInstance();
+      console.log('JoinRound: FHEVM instance obtained:', !!fhevmInstance);
 
       // Create encrypted input for the amount
+      console.log('JoinRound: Creating encrypted input for contract:', CONTRACTS.LEAD_TRADING, 'user:', address);
       const input = fhevmInstance.createEncryptedInput(
         CONTRACTS.LEAD_TRADING,
         address
       );
+      console.log('JoinRound: Encrypted input created');
 
       // Convert amount to proper units (6 decimals for USDT)
       const amountInUnits = parseUnits(amount, 6);
+      console.log('JoinRound: Amount converted to units - original:', amount, 'units:', amountInUnits.toString());
+
       input.add64(amountInUnits);
+      console.log('JoinRound: Amount added to encrypted input');
 
       // Encrypt the input
+      console.log('JoinRound: Starting encryption process');
       const encryptedInput = await input.encrypt();
+      console.log('JoinRound: Encryption completed');
+      console.log('JoinRound: Encrypted input handles:', encryptedInput.handles);
+      console.log('JoinRound: Input proof length:', encryptedInput.inputProof?.length);
 
-      // Call joinRound with encrypted amount
+      // Ensure we have valid data before calling writeContract
+      if (!encryptedInput.handles[0] || !encryptedInput.inputProof) {
+        throw new Error('Invalid encrypted input data');
+      }
+
+      console.log('JoinRound: About to call writeContract for joinRound');
       writeContract({
         address: CONTRACTS.LEAD_TRADING as `0x${string}`,
         abi: LEAD_TRADING_ABI,
@@ -92,9 +210,14 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
           encryptedInput.inputProof as `0x${string}`
         ],
       });
+      console.log('JoinRound: joinRound writeContract called');
 
     } catch (err) {
-      console.error('Error joining round:', err);
+      console.error('=== JoinRound: Join round error ===');
+      console.error('JoinRound: Error details:', err);
+      console.error('JoinRound: Error stack:', err instanceof Error ? err.stack : 'No stack trace');
+      console.error('JoinRound: Error message:', err instanceof Error ? err.message : 'Unknown error');
+
       setError(err instanceof Error ? err.message : 'Failed to join round');
       setIsLoading(false);
     }
@@ -181,12 +304,48 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
           Deposit encrypted USDT into an active trading round and earn profits based on the trader's performance.
         </p>
 
+        {/* Step indicator */}
+        <div style={{ marginBottom: '30px', padding: '20px', background: 'rgba(0, 255, 102, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 255, 102, 0.2)' }}>
+          <h4 style={{ marginBottom: '15px', color: '#00ff66' }}>
+            Step {step === 'approve' ? '1' : '2'} of 2: {step === 'approve' ? 'Approve Token Transfer' : 'Join Round'}
+          </h4>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              backgroundColor: step === 'approve' ? '#00ff66' : operatorApproved ? '#666666' : '#333333',
+              color: step === 'approve' ? '#000000' : '#ffffff',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}>
+              1. Approve
+            </div>
+            <div style={{ width: '20px', height: '2px', backgroundColor: operatorApproved ? '#00ff66' : '#333333' }}></div>
+            <div style={{
+              padding: '8px 12px',
+              borderRadius: '4px',
+              backgroundColor: step === 'join' ? '#00ff66' : '#333333',
+              color: step === 'join' ? '#000000' : '#ffffff',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}>
+              2. Join Round
+            </div>
+          </div>
+          <p style={{ fontSize: '12px', marginTop: '10px', opacity: 0.8 }}>
+            {step === 'approve'
+              ? 'First, approve the contract to transfer your cUSDT tokens'
+              : 'Now you can join the trading round with your encrypted deposit'
+            }
+          </p>
+        </div>
+
         {!address ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <p className="tech-subtitle">Connect your wallet to join a trading round</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ maxWidth: '600px' }}>
+          <form onSubmit={step === 'approve' ? handleApprove : handleJoinRound} style={{ maxWidth: '600px' }}>
             <div style={{ marginBottom: '25px' }}>
               <label className="tech-text" style={{ display: 'block', marginBottom: '8px', fontSize: '16px' }}>
                 Round ID
@@ -304,19 +463,18 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
                 type="submit"
                 className={`tech-button ${isLoading || isConfirming ? 'loading' : ''}`}
                 disabled={
-                  isLoading || 
-                  isConfirming || 
-                  !roundId || 
-                  !amount || 
+                  isLoading ||
+                  isConfirming ||
+                  (step === 'approve' ? false : (!roundId || !amount)) ||
                   (roundData ? (!roundData.isActive || !roundData.depositsEnabled || roundData.hasEnded) : false)
                 }
                 style={{ flex: 1 }}
               >
-                {isConfirming 
-                  ? 'Confirming...' 
-                  : isLoading 
-                    ? 'Joining...' 
-                    : 'Join Round'
+                {isConfirming
+                  ? 'Confirming...'
+                  : isLoading
+                    ? (step === 'approve' ? 'Approving...' : 'Joining...')
+                    : (step === 'approve' ? 'Approve cUSDT Transfer' : 'Join Round')
                 }
               </button>
               <button
