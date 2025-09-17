@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useAccount, useWalletClient } from 'wagmi';
 import { getFHEVMInstance } from '../config/fhevm';
 import { CONTRACTS } from '../config/contracts';
@@ -9,7 +9,7 @@ interface DecryptionState {
   error: string | null;
 }
 
-export const useProfitDecryption = (encryptedProfitHandle: string | undefined, roundId: number) => {
+export const useProfitDecryption = (encryptedProfitHandle: string | undefined) => {
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [state, setState] = useState<DecryptionState>({
@@ -17,7 +17,7 @@ export const useProfitDecryption = (encryptedProfitHandle: string | undefined, r
     isDecrypting: false,
     error: null,
   });
-  const [lastDecryptedHandle, setLastDecryptedHandle] = useState<string | null>(null);
+  const [, setLastDecryptedHandle] = useState<string | null>(null);
 
   const decryptProfit = useCallback(async () => {
     if (!encryptedProfitHandle || !address || !walletClient) {

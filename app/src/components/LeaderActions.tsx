@@ -67,8 +67,7 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
 
   // Decrypt the total profit
   const { decryptedProfit, isDecrypting: isProfitDecrypting, error: profitDecryptionError, isZeroValue, decrypt: decryptProfit } = useProfitDecryption(
-    encryptedTotalProfit as string,
-    parseInt(roundId) || 0
+    encryptedTotalProfit as string
   );
 
   const handleAction = async (action: ActionType) => {

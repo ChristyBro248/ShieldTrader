@@ -96,7 +96,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         const roundId = startRound + roundIndex;
         const data = roundInfoResult.result as unknown as any[];
         const fundsExtracted = Boolean(fundsExtractedResult.result);
-        const encryptedTotalProfitHandle = totalProfitResult.result as string;
+        const encryptedTotalProfitHandle = String(totalProfitResult.result);
 
         const info: RoundInfo = {
           leader: data[0],
@@ -142,8 +142,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   };
 
   // Component to display decrypted profit
-  const DecryptedProfitDisplay = ({ roundId, encryptedHandle }: { roundId: number; encryptedHandle?: string }) => {
-    const { decryptedProfit, isDecrypting, error, isZeroValue, decrypt } = useProfitDecryption(encryptedHandle, roundId);
+  const DecryptedProfitDisplay = ({ encryptedHandle }: { roundId: number; encryptedHandle?: string }) => {
+    const { decryptedProfit, isDecrypting, error, isZeroValue, decrypt } = useProfitDecryption(encryptedHandle);
 
     if (!encryptedHandle) return null;
 
