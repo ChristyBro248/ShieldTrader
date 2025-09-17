@@ -375,6 +375,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                           </div>
                         )}
 
+                        {/* Show encrypted total deposit as *** without decrypt option */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ opacity: 0.8 }}>Encrypted Deposit:</span>
+                          <span style={{ fontFamily: 'monospace', opacity: 0.7 }}>***</span>
+                        </div>
+
                         <DecryptedProfitDisplay roundId={id} encryptedHandle={info.encryptedTotalProfitHandle} />
                       </div>
 

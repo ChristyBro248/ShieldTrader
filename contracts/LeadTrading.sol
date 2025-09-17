@@ -87,6 +87,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
 
         FHE.allowThis(tradingRounds[roundId].totalDeposited);
         FHE.allowThis(tradingRounds[roundId].totalProfit);
+
         FHE.makePubliclyDecryptable(tradingRounds[roundId].totalProfit);
 
         emit RoundCreated(roundId, msg.sender, _targetAmount, _duration);

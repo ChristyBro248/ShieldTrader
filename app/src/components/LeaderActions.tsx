@@ -361,6 +361,12 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                     </span>
                   </div>
 
+                  {/* Show encrypted total deposit as *** without decrypt option */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ opacity: 0.8 }}>Encrypted Deposit:</span>
+                    <span style={{ fontFamily: 'monospace', opacity: 0.7 }}>***</span>
+                  </div>
+
                   {/* Display encrypted total profit */}
                   {encryptedTotalProfit && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -453,14 +459,14 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                     >
                       Deposit Profit
                     </button>
-                    
+
                     <button
                       className={`tech-button ${selectedAction === 'distribute-profit' ? 'active' : ''}`}
                       onClick={() => setSelectedAction('distribute-profit')}
-                      disabled={!roundData.hasEnded || roundData.isProfitDistributed || isLoading || isConfirming}
-                      style={{ 
-                        opacity: (!roundData.hasEnded || roundData.isProfitDistributed) ? 0.5 : 1,
-                        cursor: (!roundData.hasEnded || roundData.isProfitDistributed) ? 'not-allowed' : 'pointer'
+                      disabled={!roundData.fundsExtracted || roundData.isProfitDistributed || isLoading || isConfirming}
+                      style={{
+                        opacity: (!roundData.fundsExtracted || roundData.isProfitDistributed) ? 0.5 : 1,
+                        cursor: (!roundData.fundsExtracted || roundData.isProfitDistributed) ? 'not-allowed' : 'pointer'
                       }}
                     >
                       Distribute Profit
