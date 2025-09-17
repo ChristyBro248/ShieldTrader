@@ -252,7 +252,7 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ opacity: 0.8 }}>Target Amount:</span>
-                    <span>{roundData.targetAmountFormatted} USDT</span>
+                    <span>{roundData.targetAmountFormatted} cUSDT</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ opacity: 0.8 }}>Followers:</span>
@@ -280,14 +280,14 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                   {roundData.decryptedTotalDeposited > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ opacity: 0.8 }}>Total Deposited:</span>
-                      <span>{roundData.decryptedTotalDeposited.toLocaleString()} USDT</span>
+                      <span>{roundData.decryptedTotalDeposited.toLocaleString()} cUSDT</span>
                     </div>
                   )}
                   
                   {roundData.decryptedTotalProfit > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ opacity: 0.8 }}>Total Profit:</span>
-                      <span>{roundData.decryptedTotalProfit.toLocaleString()} USDT</span>
+                      <span>{roundData.decryptedTotalProfit.toLocaleString()} cUSDT</span>
                     </div>
                   )}
                   
@@ -377,7 +377,7 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                     {selectedAction === 'deposit-profit' && (
                       <div style={{ marginBottom: '20px' }}>
                         <label className="tech-text" style={{ display: 'block', marginBottom: '8px', fontSize: '14px' }}>
-                          Profit Amount (USDT)
+                          Profit Amount (cUSDT)
                         </label>
                         <input
                           type="number"

@@ -285,39 +285,16 @@ export const CUSDT_ABI = [
     "inputs": [
       {
         "internalType": "address",
-        "name": "operator",
-        "type": "address"
-      },
-      {
-        "internalType": "uint48",
-        "name": "until",
-        "type": "uint48"
-      }
-    ],
-    "name": "setOperator",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "holder",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "spender",
+        "name": "account",
         "type": "address"
       }
     ],
-    "name": "isOperator",
+    "name": "confidentialBalanceOf",
     "outputs": [
       {
-        "internalType": "bool",
+        "internalType": "euint64",
         "name": "",
-        "type": "bool"
+        "type": "bytes32"
       }
     ],
     "stateMutability": "view",
@@ -331,13 +308,82 @@ export const CUSDT_ABI = [
         "type": "address"
       },
       {
-        "internalType": "euint64",
-        "name": "amount",
-        "type": "uint256"
+        "internalType": "externalEuint64",
+        "name": "encryptedAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "inputProof",
+        "type": "bytes"
       }
     ],
     "name": "confidentialTransfer",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "euint64",
+        "name": "amount",
+        "type": "bytes32"
+      }
+    ],
+    "name": "confidentialTransfer",
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "internalType": "externalEuint64",
+        "name": "encryptedAmount",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "inputProof",
+        "type": "bytes"
+      }
+    ],
+    "name": "confidentialTransferFrom",
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "transferred",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
@@ -356,47 +402,23 @@ export const CUSDT_ABI = [
       {
         "internalType": "euint64",
         "name": "amount",
-        "type": "uint256"
+        "type": "bytes32"
       }
     ],
     "name": "confidentialTransferFrom",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "transferred",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "account",
-        "type": "address"
-      }
-    ],
-    "name": "balanceOf",
-    "outputs": [
-      {
-        "internalType": "euint64",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
-      },
-      {
-        "internalType": "uint64",
-        "name": "amount",
-        "type": "uint64"
-      }
-    ],
-    "name": "mint",
+    "inputs": [],
+    "name": "faucet",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

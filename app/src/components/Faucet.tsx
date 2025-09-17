@@ -79,7 +79,7 @@ const Faucet = ({ onBack }: FaucetProps) => {
             </div>
             <div className="tech-stat-item">
               <span className="tech-label">Token Type:</span>
-              <span className="tech-value">Confidential USDT (FHE Encrypted)</span>
+              <span className="tech-value">Confidential cUSDT (FHE Encrypted)</span>
             </div>
             <div className="tech-stat-item">
               <span className="tech-label">Usage:</span>

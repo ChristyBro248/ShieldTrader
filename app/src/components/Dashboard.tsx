@@ -3,7 +3,7 @@ import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { LEAD_TRADING_ABI, CONTRACTS } from '../config/contracts';
 
 interface DashboardProps {
-  onNavigate: (view: 'dashboard' | 'create' | 'join' | 'leader' | 'faucet', roundId?: number) => void;
+  onNavigate: (view: 'dashboard' | 'create' | 'join' | 'leader' | 'faucet' | 'assets', roundId?: number) => void;
 }
 
 interface RoundInfo {
@@ -93,7 +93,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   }, [roundsData, currentRoundId]);
 
   const formatAmount = (amount: bigint) => {
-    return (Number(amount) / Math.pow(10, 6)).toLocaleString() + ' USDT';
+    return (Number(amount) / Math.pow(10, 6)).toLocaleString() + ' cUSDT';
   };
 
   const formatDuration = (seconds: bigint) => {

@@ -11,11 +11,12 @@ import CreateRound from './components/CreateRound';
 import JoinRound from './components/JoinRound';
 import LeaderActions from './components/LeaderActions';
 import Faucet from './components/Faucet';
+import Assets from './components/Assets';
 import './index.css';
 
 const queryClient = new QueryClient();
 
-type View = 'dashboard' | 'create' | 'join' | 'leader' | 'faucet';
+type View = 'dashboard' | 'create' | 'join' | 'leader' | 'faucet' | 'assets';
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('dashboard');
@@ -56,6 +57,8 @@ function App() {
         return <LeaderActions onBack={() => setCurrentView('dashboard')} />;
       case 'faucet':
         return <Faucet onBack={() => setCurrentView('dashboard')} />;
+      case 'assets':
+        return <Assets onBack={() => setCurrentView('dashboard')} />;
       default:
         return <Dashboard onNavigate={handleNavigate} />;
     }
@@ -172,12 +175,19 @@ function App() {
                 >
                   Leader Actions
                 </button>
-                <button 
+                <button
                   className={`tech-button ${currentView === 'faucet' ? 'active' : ''}`}
                   onClick={() => setCurrentView('faucet')}
                   disabled={!fhevmReady}
                 >
                   Faucet
+                </button>
+                <button
+                  className={`tech-button ${currentView === 'assets' ? 'active' : ''}`}
+                  onClick={() => setCurrentView('assets')}
+                  disabled={!fhevmReady}
+                >
+                  Assets
                 </button>
               </div>
             </nav>

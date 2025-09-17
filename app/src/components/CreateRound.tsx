@@ -37,7 +37,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
     const durationNum = parseInt(duration);
 
     if (targetAmountNum < 1000) {
-      setError('Target amount must be at least 1000 USDT');
+      setError('Target amount must be at least 1000 cUSDT');
       return;
     }
 
@@ -109,7 +109,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
         </div>
 
         <p style={{ marginBottom: '30px', opacity: 0.8 }}>
-          Set up a new lead trading round where followers can deposit encrypted USDT for you to trade.
+          Set up a new lead trading round where followers can deposit encrypted cUSDT for you to trade.
         </p>
 
         {!address ? (
@@ -120,7 +120,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
           <form onSubmit={handleSubmit} style={{ maxWidth: '500px' }}>
             <div style={{ marginBottom: '25px' }}>
               <label className="tech-text" style={{ display: 'block', marginBottom: '8px', fontSize: '16px' }}>
-                Target Amount (USDT)
+                Target Amount (cUSDT)
               </label>
               <input
                 type="number"
@@ -133,7 +133,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
                 disabled={isLoading || isConfirming}
               />
               <p style={{ fontSize: '12px', opacity: 0.6, marginTop: '5px' }}>
-                Minimum 1000 USDT required
+                Minimum 1000 cUSDT required
               </p>
             </div>
 
@@ -193,7 +193,7 @@ const CreateRound = ({ onBack }: CreateRoundProps) => {
             <div style={{ marginTop: '30px', padding: '20px', background: 'rgba(0, 255, 0, 0.05)', borderRadius: '8px', border: '1px solid rgba(0, 255, 0, 0.2)' }}>
               <h4 style={{ marginBottom: '10px', color: '#00ff66' }}>How it works:</h4>
               <ul style={{ fontSize: '14px', lineHeight: '1.6', paddingLeft: '20px' }}>
-                <li>Followers deposit encrypted USDT until target amount is reached</li>
+                <li>Followers deposit encrypted cUSDT until target amount is reached</li>
                 <li>You can stop deposits and extract funds to start trading</li>
                 <li>After the duration ends, deposit profits back to the contract</li>
                 <li>Followers can withdraw their share based on their deposit ratio</li>

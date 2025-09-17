@@ -350,7 +350,7 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
         </div>
 
         <p style={{ marginBottom: '30px', opacity: 0.8 }}>
-          Deposit encrypted USDT into an active trading round and earn profits based on the trader's performance.
+          Deposit encrypted cUSDT into an active trading round and earn profits based on the trader's performance.
         </p>
 
         {/* Step indicator */}
@@ -439,7 +439,7 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ opacity: 0.8 }}>Target Amount:</span>
-                    <span>{roundData.targetAmountFormatted} USDT</span>
+                    <span>{roundData.targetAmountFormatted} cUSDT</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ opacity: 0.8 }}>Duration:</span>
