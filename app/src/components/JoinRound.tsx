@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { LEAD_TRADING_ABI, CONTRACTS } from '../config/contracts';
+import { LEAD_TRADING_ABI, CONTRACTS, CUSDT_ABI } from '../config/contracts';
 import { parseUnits } from 'viem';
 import { getFHEVMInstance } from '../config/fhevm';
 
@@ -102,20 +102,9 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
 
       writeContract({
         address: CONTRACTS.CUSDT as `0x${string}`,
-        abi: [
-          {
-            "inputs": [
-              { "internalType": "address", "name": "operator", "type": "address" },
-              { "internalType": "uint256", "name": "until", "type": "uint256" }
-            ],
-            "name": "setOperator",
-            "outputs": [],
-            "stateMutability": "nonpayable",
-            "type": "function"
-          }
-        ],
+        abi: CUSDT_ABI,
         functionName: 'setOperator',
-        args: [CONTRACTS.LEAD_TRADING as `0x${string}`, BigInt(until)]
+        args: [CONTRACTS.LEAD_TRADING as `0x${string}`, until]
       });
 
       console.log('JoinRound: Operator approval initiated');

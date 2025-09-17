@@ -285,6 +285,24 @@ export const CUSDT_ABI = [
     "inputs": [
       {
         "internalType": "address",
+        "name": "operator",
+        "type": "address"
+      },
+      {
+        "internalType": "uint48",
+        "name": "until",
+        "type": "uint48"
+      }
+    ],
+    "name": "setOperator",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
         "name": "to",
         "type": "address"
       },
@@ -363,7 +381,7 @@ export const CUSDT_ABI = [
 
 // Contract addresses - these should match your deployed contracts
 export const CONTRACTS = {
-  LEAD_TRADING: '0xD3cA2e7408047454B4121B71E1bCa2727cea75C9', // Will be set after deployment
+  LEAD_TRADING: '0x77E36443d36F72eeE0dA064aDbEe3795444730f4', // Will be set after deployment
   CUSDT: '0x8f41061d747F85a9A4d9D1eEE53a86acAE1C8Ff6', // Will be set after deployment
   FAUCET: '0x0000000000000000000000000000000000000000', // Will be set after deployment
   MOCK_USDT: '0x0000000000000000000000000000000000000000', // Will be set after deployment
