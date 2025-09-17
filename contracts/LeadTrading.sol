@@ -87,6 +87,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
 
         FHE.allowThis(tradingRounds[roundId].totalDeposited);
         FHE.allowThis(tradingRounds[roundId].totalProfit);
+        FHE.makePubliclyDecryptable(tradingRounds[roundId].totalProfit);
 
         emit RoundCreated(roundId, msg.sender, _targetAmount, _duration);
     }
@@ -171,6 +172,7 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
         round.totalProfit = FHE.add(round.totalProfit, profitAmount);
 
         FHE.allowThis(round.totalProfit);
+        FHE.makePubliclyDecryptable(round.totalProfit);
 
         emit ProfitDeposited(_roundId);
     }
@@ -296,20 +298,26 @@ contract LeadTrading is SepoliaConfig, ReentrancyGuard, Ownable {
     }
 
     // View functions
-    function getRoundInfo(uint256 _roundId) external view returns (
-        address leader,
-        uint256 targetAmount,
-        uint256 duration,
-        uint256 startTime,
-        uint256 endTime,
-        bool isActive,
-        bool isProfitDistributed,
-        bool depositsEnabled,
-        uint256 followerCount,
-        uint256 unitProfitRate,
-        uint256 decryptedTotalDeposited,
-        uint256 decryptedTotalProfit
-    ) {
+    function getRoundInfo(
+        uint256 _roundId
+    )
+        external
+        view
+        returns (
+            address leader,
+            uint256 targetAmount,
+            uint256 duration,
+            uint256 startTime,
+            uint256 endTime,
+            bool isActive,
+            bool isProfitDistributed,
+            bool depositsEnabled,
+            uint256 followerCount,
+            uint256 unitProfitRate,
+            uint256 decryptedTotalDeposited,
+            uint256 decryptedTotalProfit
+        )
+    {
         TradingRound storage round = tradingRounds[_roundId];
         return (
             round.leader,

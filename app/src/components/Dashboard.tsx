@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { LEAD_TRADING_ABI, CONTRACTS } from '../config/contracts';
+import { useProfitDecryption } from '../hooks/useProfitDecryption';
 
 interface DashboardProps {
   onNavigate: (view: 'dashboard' | 'create' | 'join' | 'leader' | 'faucet' | 'assets', roundId?: number) => void;
@@ -20,6 +21,7 @@ interface RoundInfo {
   decryptedTotalDeposited: bigint;
   decryptedTotalProfit: bigint;
   fundsExtracted?: boolean;
+  encryptedTotalProfitHandle?: string;
 }
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
@@ -32,7 +34,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     functionName: 'currentRoundId',
   });
 
-  // Generate contracts array for batch reading - both round info and funds extracted status
+  // Generate contracts array for batch reading - round info, funds extracted status, and total profit
   const contracts = currentRoundId ? (() => {
     const roundsToFetch = Math.min(Number(currentRoundId), 10);
     const startRound = Math.max(1, Number(currentRoundId) - roundsToFetch + 1);
@@ -51,6 +53,13 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         address: CONTRACTS.LEAD_TRADING as `0x${string}`,
         abi: LEAD_TRADING_ABI,
         functionName: 'isFundsExtracted',
+        args: [BigInt(i)],
+      });
+      // Add total profit call
+      contractCalls.push({
+        address: CONTRACTS.LEAD_TRADING as `0x${string}`,
+        abi: LEAD_TRADING_ABI,
+        functionName: 'getTotalProfit',
         args: [BigInt(i)],
       });
     }
@@ -74,17 +83,20 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const roundsToFetch = Math.min(Number(currentRoundId), 10);
     const startRound = Math.max(1, Number(currentRoundId) - roundsToFetch + 1);
 
-    // Process pairs of results (round info + funds extracted status)
-    for (let i = 0; i < roundsData.length; i += 2) {
+    // Process triplets of results (round info + funds extracted status + total profit)
+    for (let i = 0; i < roundsData.length; i += 3) {
       const roundInfoResult = roundsData[i];
       const fundsExtractedResult = roundsData[i + 1];
+      const totalProfitResult = roundsData[i + 2];
 
       if (roundInfoResult?.status === 'success' && roundInfoResult.result &&
-          fundsExtractedResult?.status === 'success') {
-        const roundIndex = Math.floor(i / 2);
+          fundsExtractedResult?.status === 'success' &&
+          totalProfitResult?.status === 'success') {
+        const roundIndex = Math.floor(i / 3);
         const roundId = startRound + roundIndex;
         const data = roundInfoResult.result as unknown as any[];
         const fundsExtracted = Boolean(fundsExtractedResult.result);
+        const encryptedTotalProfitHandle = totalProfitResult.result as string;
 
         const info: RoundInfo = {
           leader: data[0],
@@ -100,6 +112,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           decryptedTotalDeposited: data[10],
           decryptedTotalProfit: data[11],
           fundsExtracted: fundsExtracted,
+          encryptedTotalProfitHandle: encryptedTotalProfitHandle,
         };
 
         roundData.push({ id: roundId, info });
@@ -126,6 +139,87 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     const days = Math.floor(remaining / 86400);
     const hours = Math.floor((remaining % 86400) / 3600);
     return `${days}d ${hours}h remaining`;
+  };
+
+  // Component to display decrypted profit
+  const DecryptedProfitDisplay = ({ roundId, encryptedHandle }: { roundId: number; encryptedHandle?: string }) => {
+    const { decryptedProfit, isDecrypting, error, isZeroValue, decrypt } = useProfitDecryption(encryptedHandle, roundId);
+
+    if (!encryptedHandle) return null;
+
+    // Show 0 for zero values
+    if (isZeroValue) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ opacity: 0.8 }}>Total Profit:</span>
+          <span>0 cUSDT</span>
+        </div>
+      );
+    }
+
+    if (isDecrypting) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ opacity: 0.8 }}>Total Profit:</span>
+          <span style={{ fontSize: '12px', color: '#ffa500' }}>🔓 Decrypting...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ opacity: 0.8 }}>Total Profit:</span>
+          <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+            <span style={{ fontSize: '12px', color: '#ff6b6b' }}>❌ Failed</span>
+            <button
+              onClick={decrypt}
+              style={{
+                fontSize: '10px',
+                padding: '2px 6px',
+                background: 'rgba(0, 255, 102, 0.2)',
+                border: '1px solid rgba(0, 255, 102, 0.5)',
+                borderRadius: '3px',
+                color: '#00ff66',
+                cursor: 'pointer'
+              }}
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (decryptedProfit) {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ opacity: 0.8 }}>Total Profit:</span>
+          <span style={{ color: '#00ff66' }}>{decryptedProfit} cUSDT</span>
+        </div>
+      );
+    }
+
+    // Show decrypt button for encrypted data
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ opacity: 0.8 }}>Total Profit:</span>
+        <button
+          onClick={decrypt}
+          style={{
+            fontSize: '12px',
+            padding: '4px 8px',
+            background: 'rgba(0, 255, 102, 0.2)',
+            border: '1px solid rgba(0, 255, 102, 0.5)',
+            borderRadius: '4px',
+            color: '#00ff66',
+            cursor: 'pointer'
+          }}
+        >
+          🔓 Decrypt
+        </button>
+      </div>
+    );
   };
 
   const getRoundStatus = (info: RoundInfo) => {
@@ -253,6 +347,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                         </div>
                         
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ opacity: 0.8 }}>Funds Extracted:</span>
+                          <span style={{
+                            fontSize: '12px',
+                            color: info.fundsExtracted ? '#00ff66' : '#ff6b6b'
+                          }}>
+                            {info.fundsExtracted ? '✅ Yes' : '❌ No'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ opacity: 0.8 }}>Time Status:</span>
                           <span style={{ fontSize: '12px' }}>{getTimeRemaining(info.endTime)}</span>
                         </div>
@@ -270,6 +374,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                             <span>{((Number(info.unitProfitRate) / Math.pow(10, 18)) * 100).toFixed(2)}%</span>
                           </div>
                         )}
+
+                        <DecryptedProfitDisplay roundId={id} encryptedHandle={info.encryptedTotalProfitHandle} />
                       </div>
 
                       {isUserLeader ? (

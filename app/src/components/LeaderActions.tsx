@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { LEAD_TRADING_ABI, CONTRACTS } from '../config/contracts';
+import { LEAD_TRADING_ABI, CONTRACTS, CUSDT_ABI } from '../config/contracts';
 import { parseUnits } from 'viem';
 import { getFHEVMInstance } from '../config/fhevm';
+import { useProfitDecryption } from '../hooks/useProfitDecryption';
 
 interface LeaderActionsProps {
   onBack: () => void;
@@ -36,6 +37,39 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
     functionName: 'getRoundInfo',
     args: roundId ? [BigInt(roundId)] : undefined,
   });
+
+  const parseHex = (proof: Uint8Array) => {
+    let formattedProof: string
+    formattedProof = `0x${Array.from(proof).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    return formattedProof
+  }
+  const { data: fundsExtracted } = useReadContract({
+    address: roundId ? CONTRACTS.LEAD_TRADING as `0x${string}` : undefined,
+    abi: LEAD_TRADING_ABI,
+    functionName: 'isFundsExtracted',
+    args: roundId ? [BigInt(roundId)] : undefined,
+  });
+
+  const { data: encryptedTotalProfit } = useReadContract({
+    address: roundId ? CONTRACTS.LEAD_TRADING as `0x${string}` : undefined,
+    abi: LEAD_TRADING_ABI,
+    functionName: 'getTotalProfit',
+    args: roundId ? [BigInt(roundId)] : undefined,
+  });
+
+  // Check if user has set operator permission for cUSDT transfers
+  const { data: isOperatorSet } = useReadContract({
+    address: CONTRACTS.CUSDT as `0x${string}`,
+    abi: CUSDT_ABI,
+    functionName: 'isOperator',
+    args: address ? [address, CONTRACTS.LEAD_TRADING] : undefined,
+  });
+
+  // Decrypt the total profit
+  const { decryptedProfit, isDecrypting: isProfitDecrypting, error: profitDecryptionError, isZeroValue, decrypt: decryptProfit } = useProfitDecryption(
+    encryptedTotalProfit as string,
+    parseInt(roundId) || 0
+  );
 
   const handleAction = async (action: ActionType) => {
     if (!address) {
@@ -77,6 +111,20 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
           break;
 
         case 'deposit-profit':
+          // Check if operator is set first
+          if (!isOperatorSet) {
+            setError('Setting operator permission first...');
+            const until = Math.floor(Date.now() / 1000) + 24 * 60 * 60; // 24 hours
+
+            writeContract({
+              address: CONTRACTS.CUSDT as `0x${string}`,
+              abi: CUSDT_ABI,
+              functionName: 'setOperator',
+              args: [CONTRACTS.LEAD_TRADING as `0x${string}`, until]
+            });
+            return;
+          }
+
           const fhevmInstance = getFHEVMInstance();
           const input = fhevmInstance.createEncryptedInput(
             CONTRACTS.LEAD_TRADING,
@@ -94,8 +142,8 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
             functionName: 'depositProfit',
             args: [
               BigInt(roundId),
-              encryptedInput.handles[0],
-              encryptedInput.inputProof as `0x${string}`
+              parseHex(encryptedInput.handles[0]) as `0x${string}`,
+              parseHex(encryptedInput.inputProof) as `0x${string}`
             ],
           });
           break;
@@ -154,7 +202,8 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
       hasEnded: timeRemaining <= 0,
       decryptedTotalDeposited: Number(decryptedTotalDeposited) / Math.pow(10, 6),
       decryptedTotalProfit: Number(decryptedTotalProfit) / Math.pow(10, 6),
-      unitProfitRate: Number(unitProfitRate) / Math.pow(10, 18)
+      unitProfitRate: Number(unitProfitRate) / Math.pow(10, 18),
+      fundsExtracted: Boolean(fundsExtracted)
     };
   };
 
@@ -292,11 +341,72 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                   )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ opacity: 0.8 }}>Funds Extracted:</span>
+                    <span className={roundData.fundsExtracted ? 'status-active' : 'status-inactive'}>
+                      {roundData.fundsExtracted ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ opacity: 0.8 }}>Operator Set:</span>
+                    <span className={isOperatorSet ? 'status-active' : 'status-inactive'}>
+                      {isOperatorSet ? 'Yes' : 'No'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ opacity: 0.8 }}>Profit Distributed:</span>
                     <span className={roundData.isProfitDistributed ? 'status-completed' : 'status-inactive'}>
                       {roundData.isProfitDistributed ? 'Yes' : 'No'}
                     </span>
                   </div>
+
+                  {/* Display encrypted total profit */}
+                  {encryptedTotalProfit && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ opacity: 0.8 }}>Total Profit:</span>
+                      {isZeroValue ? (
+                        <span>0 cUSDT</span>
+                      ) : isProfitDecrypting ? (
+                        <span style={{ fontSize: '12px', color: '#ffa500' }}>🔓 Decrypting...</span>
+                      ) : profitDecryptionError ? (
+                        <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                          <span style={{ fontSize: '12px', color: '#ff6b6b' }}>❌ Failed</span>
+                          <button
+                            onClick={decryptProfit}
+                            style={{
+                              fontSize: '10px',
+                              padding: '2px 6px',
+                              background: 'rgba(0, 255, 102, 0.2)',
+                              border: '1px solid rgba(0, 255, 102, 0.5)',
+                              borderRadius: '3px',
+                              color: '#00ff66',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : decryptedProfit ? (
+                        <span style={{ color: '#00ff66' }}>{decryptedProfit} cUSDT</span>
+                      ) : (
+                        <button
+                          onClick={decryptProfit}
+                          style={{
+                            fontSize: '12px',
+                            padding: '4px 8px',
+                            background: 'rgba(0, 255, 102, 0.2)',
+                            border: '1px solid rgba(0, 255, 102, 0.5)',
+                            borderRadius: '4px',
+                            color: '#00ff66',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          🔓 Decrypt
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -322,10 +432,10 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                     <button
                       className={`tech-button ${selectedAction === 'extract-funds' ? 'active' : ''}`}
                       onClick={() => setSelectedAction('extract-funds')}
-                      disabled={roundData.depositsEnabled || isLoading || isConfirming}
-                      style={{ 
-                        opacity: roundData.depositsEnabled ? 0.5 : 1,
-                        cursor: roundData.depositsEnabled ? 'not-allowed' : 'pointer'
+                      disabled={roundData.depositsEnabled || roundData.fundsExtracted || isLoading || isConfirming}
+                      style={{
+                        opacity: (roundData.depositsEnabled || roundData.fundsExtracted) ? 0.5 : 1,
+                        cursor: (roundData.depositsEnabled || roundData.fundsExtracted) ? 'not-allowed' : 'pointer'
                       }}
                     >
                       Extract Funds
@@ -334,11 +444,12 @@ const LeaderActions = ({ onBack }: LeaderActionsProps) => {
                     <button
                       className={`tech-button ${selectedAction === 'deposit-profit' ? 'active' : ''}`}
                       onClick={() => setSelectedAction('deposit-profit')}
-                      disabled={!roundData.hasEnded || roundData.isProfitDistributed || isLoading || isConfirming}
-                      style={{ 
-                        opacity: (!roundData.hasEnded || roundData.isProfitDistributed) ? 0.5 : 1,
-                        cursor: (!roundData.hasEnded || roundData.isProfitDistributed) ? 'not-allowed' : 'pointer'
+                      disabled={!roundData.fundsExtracted || roundData.isProfitDistributed || isLoading || isConfirming}
+                      style={{
+                        opacity: (!roundData.fundsExtracted || roundData.isProfitDistributed) ? 0.5 : 1,
+                        cursor: (!roundData.fundsExtracted || roundData.isProfitDistributed) ? 'not-allowed' : 'pointer'
                       }}
+                      title={!isOperatorSet ? 'Will set operator permission first, then deposit profit' : 'Deposit trading profits to the contract'}
                     >
                       Deposit Profit
                     </button>

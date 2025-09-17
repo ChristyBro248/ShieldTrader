@@ -254,6 +254,25 @@ export const LEAD_TRADING_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_roundId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getTotalProfit",
+    "outputs": [
+      {
+        "internalType": "euint64",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "currentRoundId",
     "outputs": [
@@ -488,8 +507,8 @@ export const CUSDT_ABI = [
 
 // Contract addresses - these should match your deployed contracts
 export const CONTRACTS = {
-  LEAD_TRADING: '0x7153a34292b60C62E52F5CF627B2C07AA0E85AdF', // Updated contract with fundsExtracted tracking
-  CUSDT: '0x8f41061d747F85a9A4d9D1eEE53a86acAE1C8Ff6', // Will be set after deployment
+  LEAD_TRADING: '0x971d45cAbc93c34902ec43633bb70A4e077Ae8d3', // Updated contract with fundsExtracted tracking (localhost)
+  CUSDT: '0x8f41061d747F85a9A4d9D1eEE53a86acAE1C8Ff6', // Updated to localhost address
   FAUCET: '0x0000000000000000000000000000000000000000', // Will be set after deployment
   MOCK_USDT: '0x0000000000000000000000000000000000000000', // Will be set after deployment
 } as const;
