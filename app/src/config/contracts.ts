@@ -38,7 +38,7 @@ export const LEAD_TRADING_ABI = [
       {
         "internalType": "externalEuint64",
         "name": "_encryptedAmount",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",
@@ -87,7 +87,7 @@ export const LEAD_TRADING_ABI = [
       {
         "internalType": "externalEuint64",
         "name": "_encryptedProfitAmount",
-        "type": "uint256"
+        "type": "bytes32"
       },
       {
         "internalType": "bytes",

@@ -171,6 +171,12 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
     }
   };
 
+  const parseHex = (proof: Uint8Array) => {
+    let formattedProof: string
+    formattedProof = `0x${Array.from(proof).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+    return formattedProof
+  }
+
   const handleJoinRound = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('=== JoinRound: Starting join round process ===');
@@ -249,8 +255,8 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
         functionName: 'joinRound',
         args: [
           BigInt(roundId),
-          encryptedInput.handles[0],
-          encryptedInput.inputProof as `0x${string}`
+          parseHex( encryptedInput.handles[0]) as `0x${string}` ,
+          parseHex(encryptedInput.inputProof) as `0x${string}`
         ],
       });
       console.log('JoinRound: joinRound writeContract called');
