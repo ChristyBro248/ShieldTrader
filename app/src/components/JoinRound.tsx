@@ -484,7 +484,7 @@ const JoinRound = ({ onBack, prefilledRoundId }: JoinRoundProps) => {
 
             <div style={{ marginBottom: '25px' }}>
               <label className="tech-text" style={{ display: 'block', marginBottom: '8px', fontSize: '16px' }}>
-                Deposit Amount (USDT)
+                Deposit Amount (cUSDT)
               </label>
               <input
                 type="number"
